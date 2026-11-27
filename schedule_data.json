@@ -1,0 +1,79 @@
+{
+  "updated_at": "2026-11-27 09:47 JST",
+  "next_summary": "次のおがさわら丸の運航は、11/27(金) 東京 11時00分発、12/1(火) 父島 15時00分発 の予定です。ご乗船をお待ちしております。",
+  "alerts": [],
+  "recent_info": [
+    {
+      "title": "1便（2026.12.22発）限定プラン！謝恩ツアー小笠原５泊６日",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=13627",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "【速報】2027年7～12月おがさわら丸時刻表（10/8発表）",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=13584",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "〖2026年12月実施〗ガイドと歩くぶらり森 小笠原6日間",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=13534",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "〖2026年10月～2027年1月毎便実施〗小笠原優雅旅～ホテルホライズンで楽しむ5泊6日の旅～",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=13429",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "〖2026年11･12月実施〗カカオを味わう。唯一無二の母島旅",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=13428",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "〖2026年11･12月実施〗おとな女子旅を楽しむ～癒しの小笠原～",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=13425",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "〖2026年10･11･12月実施〗歴史探訪と感動の小笠原6日間",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=13427",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "〖2026年10月～毎便実施〗小笠原ロングバケーション",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=13424",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "【速報】2027年1～6月おがさわら丸時刻表（7/1発表）",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=13411",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "【お知らせ】本社事務所の移転について",
+      "url": "https://www.ogasawarakaiun.co.jp/info/?p=12748",
+      "is_alert": false,
+      "matched_keywords": []
+    }
+  ],
+  "hahajima_status": {
+    "status": "欠航・運休情報あり",
+    "source_url": "https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/"
+  },
+  "sources": {
+    "ogamaru_info": "https://www.ogasawarakaiun.co.jp/info/",
+    "ogamaru_next": "https://www.ogasawarakaiun.co.jp/info/?page_id=9",
+    "ogamaru_service": "https://www.ogasawarakaiun.co.jp/service/",
+    "hahajima_service": "https://www.ogasawarakaiun.co.jp/service/hahajima.html",
+    "hahajima_status": "https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/"
+  },
+  "fingerprint": "90d805f834ef3b43b778695fa42aae39a191a053e23f1356775df5c95a2808e9"
+}
