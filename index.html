@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>おがまる便り — おがさわら丸・ははじま丸スケジュール</title>
+  <title>おが丸入出港カレンダー（非公式）</title>
+  <link rel="icon" type="image/jpeg" href="./icon.jpg" />
+  <link rel="apple-touch-icon" href="./icon.jpg" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -34,7 +36,7 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col pb-24">
+<body class="min-h-screen flex flex-col pb-28">
 
   <!-- Top Header -->
   <header class="bonin-gradient text-white shadow-sm sticky top-0 z-30">
@@ -44,7 +46,10 @@
           <i data-lucide="ship" class="w-4 h-4 text-sky-100"></i>
         </div>
         <div class="min-w-0">
-          <h1 class="text-base font-bold tracking-tight leading-tight truncate">おがまる便り</h1>
+          <div class="flex items-center gap-1.5 min-w-0">
+            <h1 class="text-sm sm:text-base font-bold tracking-tight leading-tight truncate">おが丸入出港カレンダー</h1>
+            <span class="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-bold text-white shrink-0">非公式</span>
+          </div>
           <button id="syncBtn" type="button" class="flex items-center gap-1 text-[11px] text-sky-100/90 hover:text-white transition">
             <i data-lucide="refresh-cw" id="syncIcon" class="w-3 h-3"></i>
             <span id="syncLabel">公式同期: 11/27 08:00</span>
@@ -71,8 +76,11 @@
     <section id="view-home" class="space-y-5">
       <!-- Sketch-faithful 3-point Timeline Hero -->
       <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 px-3 py-7 sm:px-6 sm:py-9">
-        <!-- Ship Status Pill -->
-        <div class="flex justify-center mb-5">
+        <!-- Today's Date & Ship Status Pill -->
+        <div class="flex flex-col items-center justify-center gap-2 mb-5">
+          <div class="text-xs sm:text-sm font-bold text-slate-500 tracking-wide">
+            今日：<span id="homeTodayDate" class="text-slate-800">11月27日(金)</span>
+          </div>
           <span id="shipStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200/70">
             <span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
             <span id="shipStatusText">航海中（東京 → 父島）</span>
@@ -151,7 +159,7 @@
             <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
             <span>現在、緊急の運航変更はありません</span>
           </div>
-          <a href="https://www.ogasawarakaiun.co.jp/info/" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline font-medium shrink-0">公式サイト ↗</a>
+          <a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline font-medium shrink-0">公式サイト ↗</a>
         </div>
 
         <!-- Emergency Alert Card (Shown only when an emergency change is active) -->
@@ -174,8 +182,9 @@
           </div>
         </div>
       </div>
-
-
+      <p class="text-center text-[11px] text-slate-400 pt-1">
+        ※非公式アプリです。最新の正確な運航情報は<a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="underline hover:text-slate-600">小笠原海運公式サイト</a>をご確認ください。
+      </p>
     </section>
 
     <!-- ==================== CALENDAR VIEW ==================== -->
@@ -280,13 +289,13 @@
   </main>
 
   <!-- Toast Notification -->
-  <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900 text-white text-xs font-medium shadow-lg opacity-0 pointer-events-none transition-opacity duration-200">
+  <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900 text-white text-xs font-medium shadow-lg opacity-0 pointer-events-none transition-opacity duration-200">
     最新の公式データを確認しました
   </div>
 
-  <!-- Bottom Navigation Bar -->
-  <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 z-40">
-    <div class="max-w-2xl mx-auto grid grid-cols-4 h-16">
+  <!-- Bottom Navigation Bar (Raised one tier for comfortable thumb reach) -->
+  <nav class="fixed bottom-5 left-4 right-4 max-w-xl mx-auto bg-white/95 backdrop-blur border border-slate-200/90 rounded-2xl shadow-lg z-40">
+    <div class="grid grid-cols-4 h-16">
       <button type="button" data-tab="home" class="nav-btn tab-active flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
         <i data-lucide="home" class="w-5 h-5"></i>
         <span>ホーム</span>
@@ -546,7 +555,8 @@
       const nextEvt = events[nextIdx];
       const afterEvt = nextIdx < events.length - 1 ? events[nextIdx + 1] : null;
 
-      // Ship Status Badge
+      // Today's Date & Ship Status Badge
+      document.getElementById('homeTodayDate').textContent = `${fmtDateShort(today)}${fmtWeekday(today)}`;
       document.getElementById('shipStatusText').textContent = getShipStatus(today);
 
       // Left (Prev)
@@ -827,8 +837,8 @@
       html += `
         <div class="rounded-2xl bg-slate-50 border border-slate-200/80 p-3.5 text-xs text-slate-600 space-y-1.5">
           <div class="font-bold text-slate-800">公式サイト参照元</div>
-          <div>・<a href="https://www.ogasawarakaiun.co.jp/service/" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline">小笠原海運 時刻表・運賃表 ↗</a></div>
-          <div>・<a href="https://www.ogasawarakaiun.co.jp/info/" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline">小笠原海運 お知らせ・運航情報 ↗</a></div>
+          <div>・<a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline">小笠原海運 公式サイト ↗</a></div>
+          <div>・<a href="https://izu-syotou.jp/" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline">伊豆諸島開発（ははじま丸）公式サイト ↗</a></div>
         </div>
       `;
 

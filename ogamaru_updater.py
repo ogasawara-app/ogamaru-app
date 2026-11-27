@@ -171,22 +171,18 @@ def send_webhook(message: str, webhook_url: str) -> bool:
 
 
 def build_notification_text(data: Dict[str, Any]) -> str:
-    """通知用の読みやすいメッセージを作成する。"""
-    lines = ["【おがまる便り】運航情報に更新がありました"]
+    """公式文章の丸ごと転載を避け、事実の検知と公式トップページへの案内を作成する。"""
+    lines = ["【おが丸入出港カレンダー（非公式）】運航情報に更新がありました"]
     if data.get("alerts"):
+        kws = sorted({kw for a in data["alerts"] for kw in a.get("matched_keywords", [])})
+        kw_text = "・".join(kws) if kws else "運航変更"
         lines.append("")
-        lines.append("⚠ 変更・注意のお知らせ:")
-        for a in data["alerts"][:3]:
-            lines.append(f"・{a['title']}")
-            if a.get("url"):
-                lines.append(f"  {a['url']}")
-    if data.get("next_summary"):
-        lines.append("")
-        lines.append(f"■ 次回運航予定:\n{data['next_summary'][:140]}")
+        lines.append(f"⚠ 検知された変更種別: {kw_text}")
     if data.get("hahajima_status"):
-        lines.append("")
         lines.append(f"■ ははじま丸: {data['hahajima_status']['status']}")
     lines.append("")
+    lines.append("詳細は公式サイトをご確認ください:")
+    lines.append("https://www.ogasawarakaiun.co.jp/")
     lines.append(f"確認時刻: {data['updated_at']}")
     return "\n".join(lines)
 
