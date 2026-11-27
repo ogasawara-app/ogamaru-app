@@ -14,6 +14,7 @@
 """
 
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -43,6 +44,7 @@ ALERT_KEYWORDS = [
 ]
 
 OUTPUT_JSON = Path("schedule_data.json")
+HISTORY_CSV = Path("schedule_history.csv")
 USER_AGENT = "OgamaruScheduleBot/1.0 (+https://www.ogasawarakaiun.co.jp/)"
 
 
@@ -273,6 +275,21 @@ def main() -> int:
     changed = new_fingerprint != prev_fingerprint
     out_path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"[INFO] {out_path} を保存しました (changed={changed}, alerts={len(alerts)})")
+
+    # 変更があったとき（または初回）は過去記録用のCSVに追記保存する
+    if changed:
+        is_new_csv = not HISTORY_CSV.exists()
+        kws = "・".join(sorted({kw for a in alerts for kw in a.get("matched_keywords", [])})) if alerts else "通常更新"
+        with HISTORY_CSV.open("a", encoding="utf-8-sig", newline="") as f:
+            writer = csv.writer(f)
+            if is_new_csv:
+                writer.writerow(["記録日時", "変更種別", "ははじま丸状況", "次回運航概要"])
+            writer.writerow([
+                new_data["updated_at"],
+                kws,
+                haha_status.get("status", ""),
+                next_summary[:160],
+            ])
 
     # 差分があった場合（特に緊急変更がある場合）に通知を送る
     if changed and (alerts or prev_fingerprint is not None):

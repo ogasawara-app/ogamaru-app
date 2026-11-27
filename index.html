@@ -12,6 +12,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
+    html, body {
+      overscroll-behavior-y: none;
+    }
     body {
       font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: #f4f8fb;
@@ -35,8 +38,10 @@
       scrollbar-width: none;
     }
   </style>
+  <!-- Cloudflare Web Analytics: 取得した専用スクリプト1行をこの下に貼り付けてください -->
+  <!-- <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "ここにトークン"}'></script> -->
 </head>
-<body class="min-h-screen flex flex-col pb-44">
+<body id="appBody" class="h-[100dvh] overflow-hidden flex flex-col">
 
   <!-- Top Header -->
   <header class="bonin-gradient text-white shadow-sm sticky top-0 z-30">
@@ -45,37 +50,37 @@
         <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
           <i data-lucide="ship" class="w-4 h-4 text-sky-100"></i>
         </div>
-        <div class="min-w-0">
-          <div class="flex items-center gap-1.5 min-w-0">
-            <h1 class="text-sm sm:text-base font-bold tracking-tight leading-tight truncate">おが丸入出港カレンダー</h1>
-            <span class="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-bold text-white shrink-0">非公式</span>
-          </div>
-          <button id="syncBtn" type="button" class="flex items-center gap-1 text-[11px] text-sky-100/90 hover:text-white transition">
-            <i data-lucide="refresh-cw" id="syncIcon" class="w-3 h-3"></i>
-            <span id="syncLabel">公式同期: 11/27 08:00</span>
-          </button>
+        <div class="flex items-center gap-1.5 min-w-0">
+          <h1 class="text-sm sm:text-base font-bold tracking-tight leading-tight truncate">おが丸入出港カレンダー</h1>
+          <span class="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-bold text-white shrink-0">非公式</span>
         </div>
       </div>
 
-      <!-- Mode Toggle: 島民 / 観光客 -->
-      <div class="flex items-center bg-slate-900/25 p-0.5 rounded-full shrink-0 border border-white/15">
-        <button id="modeIslanderBtn" type="button" class="px-3 py-1 rounded-full text-xs font-semibold transition bg-white text-sky-900 shadow-sm">
-          島民
-        </button>
-        <button id="modeTouristBtn" type="button" class="px-3 py-1 rounded-full text-xs font-semibold transition text-sky-100 hover:text-white">
-          観光客
+      <div class="flex items-center gap-1.5 shrink-0">
+        <!-- Mode Toggle: 島民 / 観光 -->
+        <div class="flex items-center bg-slate-900/25 p-0.5 rounded-full border border-white/15">
+          <button id="modeIslanderBtn" type="button" class="px-3 py-1 rounded-full text-xs font-semibold transition bg-white text-sky-900 shadow-sm">
+            島民
+          </button>
+          <button id="modeTouristBtn" type="button" class="px-3 py-1 rounded-full text-xs font-semibold transition text-white/95 hover:text-white">
+            観光
+          </button>
+        </div>
+        <!-- Unobtrusive Info / Terms / Archive button -->
+        <button id="openInfoModalBtn" type="button" aria-label="アプリ情報・過去データ" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sky-100 transition">
+          <i data-lucide="info" class="w-4 h-4"></i>
         </button>
       </div>
     </div>
   </header>
 
   <!-- Main Content -->
-  <main class="flex-1 max-w-2xl w-full mx-auto px-4 pt-4">
+  <main id="mainScroll" class="flex-1 max-w-2xl w-full mx-auto px-4 pt-4 overflow-hidden">
 
     <!-- ==================== HOME VIEW ==================== -->
     <section id="view-home" class="space-y-5">
       <!-- Sketch-faithful 3-point Timeline Hero -->
-      <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 px-3 py-7 sm:px-6 sm:py-9">
+      <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 px-3 py-5 sm:px-6 sm:py-7">
         <!-- Today's Date & Ship Status Pill -->
         <div class="flex flex-col items-center justify-center gap-2 mb-5">
           <div class="text-base sm:text-lg font-bold text-slate-500 tracking-wide">
@@ -153,14 +158,7 @@
 
       <!-- Bottom Area: Intentionally Minimal — Only Emergency Changes Stand Out -->
       <div id="emergencyContainer">
-        <!-- Normal subtle state -->
-        <div id="normalStatusBar" class="flex items-center justify-between px-4 py-3 rounded-2xl bg-white/80 border border-slate-200/60 text-xs sm:text-sm text-slate-600">
-          <div class="flex items-center gap-2">
-            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
-            <span>現在、緊急の運航変更はありません</span>
-          </div>
-          <a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline font-medium shrink-0">公式サイト ↗</a>
-        </div>
+
 
         <!-- Emergency Alert Card (Shown only when an emergency change is active) -->
         <div id="emergencyAlertCard" class="hidden rounded-2xl bg-rose-50 border-2 border-rose-300 p-4 shadow-sm">
@@ -190,15 +188,21 @@
     <!-- ==================== CALENDAR VIEW ==================== -->
     <section id="view-calendar" class="hidden space-y-4">
       <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 p-4 sm:p-5">
-        <!-- Month Navigation -->
-        <div class="flex items-center justify-between mb-4">
-          <button id="calPrevMonth" type="button" class="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition">
+        <!-- Month Navigation & Startup Preference -->
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <button id="calPrevMonth" type="button" class="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition shrink-0">
             <i data-lucide="chevron-left" class="w-4 h-4 text-slate-700"></i>
           </button>
           <h2 id="calMonthTitle" class="text-base sm:text-lg font-bold text-slate-900">2026年 11月</h2>
-          <button id="calNextMonth" type="button" class="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition">
+          <button id="calNextMonth" type="button" class="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition shrink-0">
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-700"></i>
           </button>
+        </div>
+        <div class="flex justify-end mb-2">
+          <label class="inline-flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer select-none bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200/80">
+            <input id="defaultCalCheckbox" type="checkbox" class="rounded text-sky-600 focus:ring-sky-500" />
+            <span>起動時にカレンダーを開く</span>
+          </label>
         </div>
 
         <!-- Legend -->
@@ -235,16 +239,10 @@
     <!-- ==================== CHANGES VIEW ==================== -->
     <section id="view-changes" class="hidden space-y-4">
       <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 p-4 sm:p-5">
-        <div class="flex items-center justify-between gap-2 mb-3">
-          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-            <i data-lucide="bell-ring" class="w-4 h-4 text-sky-600"></i>
-            日時の変更・運航情報
-          </h2>
-          <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-700 font-semibold">毎日自動チェック</span>
+        <div class="flex items-center gap-2 mb-4">
+          <i data-lucide="bell-ring" class="w-4 h-4 text-sky-600"></i>
+          <h2 class="text-base font-bold text-slate-900">日時の変更・運航情報</h2>
         </div>
-        <p class="text-xs text-slate-500 leading-relaxed mb-4">
-          小笠原海運の公式サイトから毎日自動で取得した運航情報・変更のお知らせを表示します。
-        </p>
 
         <!-- Active Change Feed -->
         <div id="changesFeed" class="space-y-3">
@@ -287,6 +285,53 @@
     </section>
 
   </main>
+
+  <!-- Info / Terms / Contact / Past Data Modal (Unobtrusive secondary screen) -->
+  <div id="infoModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[85dvh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-base font-bold text-slate-900">アプリ情報</h2>
+        <button id="closeInfoModalBtn" type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto space-y-5 text-xs sm:text-sm text-slate-600">
+        <!-- Terms & Privacy -->
+        <div class="space-y-1.5">
+          <h3 class="font-bold text-slate-900">利用規約・免責事項</h3>
+          <p class="text-xs leading-relaxed">
+            本アプリは小笠原海運株式会社・伊豆諸島開発株式会社とは無関係の<strong>非公式アプリ</strong>です。表示される時刻・運航予定の正確性や最新性について保証するものではなく、利用によって生じた損害等について制作者は一切の責任を負いません。実際の乗船・貨物手配の際は、必ず<a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="text-sky-700 underline">小笠原海運公式サイト</a>等の公式情報をご確認ください。
+          </p>
+          <p class="text-xs leading-relaxed text-slate-500">
+            利用状況の把握のため、Cookieを使用しないアクセス解析（Cloudflare Web Analytics）を利用する場合があります。個人を特定する情報は収集しません。
+          </p>
+        </div>
+
+        <!-- Contact (Google Form) -->
+        <div class="space-y-2 pt-3 border-t border-slate-100">
+          <h3 class="font-bold text-slate-900">お問い合わせ・誤情報報告</h3>
+          <!-- Googleフォームを作成したら、下の href="#" をフォームのURLに書き換えてください -->
+          <a id="contactFormLink" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition">
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            <span>お問い合わせフォーム（準備中）</span>
+          </a>
+        </div>
+
+        <!-- Past Data (Hidden at the bottom inside a collapsed toggle) -->
+        <details class="pt-3 border-t border-slate-100">
+          <summary class="text-[11px] text-slate-400 cursor-pointer select-none hover:text-slate-600 list-none flex items-center justify-between">
+            <span>過去データ</span>
+            <span>▸</span>
+          </summary>
+          <div class="mt-3 space-y-2">
+            <div id="archiveTableContainer" class="max-h-44 overflow-y-auto rounded-2xl border border-slate-200 divide-y divide-slate-100 text-xs">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-36 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900 text-white text-xs font-medium shadow-lg opacity-0 pointer-events-none transition-opacity duration-200">
@@ -533,7 +578,7 @@
     function getShipStatus(dateStr) {
       for (const v of BASE_VOYAGES) {
         if (v.chichiArr === dateStr) return '本日 父島入港日';
-        if (v.stayDates.includes(dateStr)) return 'おがさわら丸 父島停泊中';
+        if (v.stayDates.includes(dateStr)) return '父島停泊中';
         if (v.chichiDep === dateStr) return '本日 父島出港日';
         if (v.tokyoDep === dateStr) return '航海中（東京 → 父島）';
         if (v.tokyoArr === dateStr) return '航海中（父島 → 東京）';
@@ -643,21 +688,25 @@
 
       // Emergency Alert Area
       const activeChange = SCENARIOS[state.scenario];
-      const normalBar = document.getElementById('normalStatusBar');
       const alertCard = document.getElementById('emergencyAlertCard');
       const navDot = document.getElementById('navChangeDot');
 
+      const mainEl = document.getElementById('mainScroll');
       if (activeChange) {
-        normalBar.classList.add('hidden');
         alertCard.classList.remove('hidden');
         navDot.classList.remove('hidden');
         document.getElementById('emergencyTitle').textContent = activeChange.title;
         document.getElementById('emergencyDesc').textContent = activeChange.desc;
         document.getElementById('emergencyUpdatedAt').textContent = activeChange.updatedAt;
+        if (state.tab === 'home') {
+          mainEl.className = 'flex-1 max-w-2xl w-full mx-auto px-4 pt-3 pb-36 overflow-y-auto';
+        }
       } else {
-        normalBar.classList.remove('hidden');
         alertCard.classList.add('hidden');
         navDot.classList.add('hidden');
+        if (state.tab === 'home') {
+          mainEl.className = 'flex-1 max-w-2xl w-full mx-auto px-4 pt-4 overflow-y-auto';
+        }
       }
     }
 
@@ -671,14 +720,11 @@
       const grid = document.getElementById('calendarGrid');
       grid.innerHTML = '';
 
-      for (let i = 0; i < firstDay; i++) {
-        const empty = document.createElement('div');
-        empty.className = 'h-14';
-        grid.appendChild(empty);
-      }
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      function appendCalCell(cellDate, isOutsideMonth) {
+        const cy = cellDate.getFullYear();
+        const cm = cellDate.getMonth() + 1;
+        const cd = cellDate.getDate();
+        const dateStr = `${cy}-${String(cm).padStart(2, '0')}-${String(cd).padStart(2, '0')}`;
         const info = getDayInfo(dateStr);
         const isSelected = state.selectedDate === dateStr;
         const isToday = state.simDate === dateStr;
@@ -690,10 +736,11 @@
         if (info.ogamaru.role === 'arr') bgClass = 'bg-sky-50 hover:bg-sky-100 border-sky-200';
         if (info.ogamaru.role === 'dep') bgClass = 'bg-amber-50 hover:bg-amber-100 border-amber-200';
         if (isSelected) bgClass += ' ring-2 ring-sky-600';
+        if (isOutsideMonth) bgClass += ' opacity-40';
 
         btn.className = `h-14 rounded-xl border flex flex-col items-center justify-start pt-1.5 px-0.5 transition relative ${bgClass}`;
 
-        const dow = new Date(y, m - 1, day).getDay();
+        const dow = cellDate.getDay();
         let numColor = 'text-slate-700';
         if (dow === 0) numColor = 'text-rose-500';
         if (dow === 6) numColor = 'text-sky-600';
@@ -704,21 +751,40 @@
         } else if (info.ogamaru.role === 'dep') {
           tagHtml = `<span class="mt-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold ${info.ogamaru.isChanged ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'}">出港</span>`;
         } else if (info.ogamaru.role === 'stay') {
-          tagHtml = `<span class="mt-1 text-[9px] font-semibold text-sky-700">停泊</span>`;
+          tagHtml = `<span class="mt-1 text-[8px] sm:text-[9px] font-semibold text-sky-700 whitespace-nowrap">父島泊</span>`;
         }
 
-        const todayDot = isToday ? `<span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500" title="基準日"></span>` : '';
+        const todayDot = isToday ? `<span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500" title="今日"></span>` : '';
 
         btn.innerHTML = `
           ${todayDot}
-          <span class="text-xs font-bold leading-none ${numColor}">${day}</span>
+          <span class="text-xs font-bold leading-none ${numColor}">${cd}</span>
           ${tagHtml}
         `;
         btn.addEventListener('click', () => {
           state.selectedDate = dateStr;
+          if (isOutsideMonth) {
+            state.calYear = cy;
+            state.calMonth = cm;
+          }
           renderCalendar();
         });
         grid.appendChild(btn);
+      }
+
+      // Leading days from previous month
+      for (let i = firstDay; i > 0; i--) {
+        appendCalCell(new Date(y, m - 1, 1 - i), true);
+      }
+      // Days in current month
+      for (let day = 1; day <= daysInMonth; day++) {
+        appendCalCell(new Date(y, m - 1, day), false);
+      }
+      // Trailing days from next month to fill the week row
+      const totalCells = firstDay + daysInMonth;
+      const trailing = (7 - (totalCells % 7)) % 7;
+      for (let i = 1; i <= trailing; i++) {
+        appendCalCell(new Date(y, m - 1, daysInMonth + i), true);
       }
 
       // Render Selected Day Detail
@@ -809,38 +875,7 @@
         `;
       }
 
-      if (state.liveData) {
-        if (state.liveData.next_summary) {
-          html += `
-            <div class="rounded-2xl bg-sky-50/70 border border-sky-200 p-3.5 text-xs text-sky-950">
-              <div class="font-bold mb-1">公式取得データ（${state.liveData.updated_at || '最新'}）</div>
-              <p class="leading-relaxed">${state.liveData.next_summary}</p>
-            </div>
-          `;
-        }
-        if (state.liveData.recent_info && state.liveData.recent_info.length > 0) {
-          const itemsHtml = state.liveData.recent_info.slice(0, 5).map(item => `
-            <div class="flex items-start gap-1.5">
-              <span class="mt-0.5">${item.is_alert ? '⚠' : '・'}</span>
-              <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline">${item.title} ↗</a>
-            </div>
-          `).join('');
-          html += `
-            <div class="rounded-2xl bg-white border border-slate-200 p-3.5 text-xs text-slate-700 space-y-1.5">
-              <div class="font-bold text-slate-800">公式サイト 最新お知らせ</div>
-              ${itemsHtml}
-            </div>
-          `;
-        }
-      }
 
-      html += `
-        <div class="rounded-2xl bg-slate-50 border border-slate-200/80 p-3.5 text-xs text-slate-600 space-y-1.5">
-          <div class="font-bold text-slate-800">公式サイト参照元</div>
-          <div>・<a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline">小笠原海運 公式サイト ↗</a></div>
-          <div>・<a href="https://izu-syotou.jp/" target="_blank" rel="noopener noreferrer" class="text-sky-700 hover:underline">伊豆諸島開発（ははじま丸）公式サイト ↗</a></div>
-        </div>
-      `;
 
       feed.innerHTML = html;
       lucide.createIcons();
@@ -908,9 +943,11 @@
       }
     }
 
+    const TAB_ORDER = ['home', 'calendar', 'changes', 'hahajima'];
+
     function switchTab(tabName) {
       state.tab = tabName;
-      ['home', 'calendar', 'changes', 'hahajima'].forEach(t => {
+      TAB_ORDER.forEach(t => {
         document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tabName);
       });
       document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -918,10 +955,42 @@
         btn.classList.toggle('tab-active', active);
         btn.classList.toggle('text-slate-400', !active);
       });
+      const mainEl = document.getElementById('mainScroll');
+      if (tabName === 'home') {
+        mainEl.className = state.scenario !== 'none'
+          ? 'flex-1 max-w-2xl w-full mx-auto px-4 pt-3 pb-36 overflow-y-auto'
+          : 'flex-1 max-w-2xl w-full mx-auto px-4 pt-4 overflow-y-auto';
+      } else {
+        mainEl.className = 'flex-1 max-w-2xl w-full mx-auto px-4 pt-4 pb-36 overflow-y-auto';
+        mainEl.scrollTop = 0;
+      }
       if (tabName === 'calendar') renderCalendar();
       if (tabName === 'changes') renderChanges();
       if (tabName === 'hahajima') renderHahajima();
     }
+
+    // Horizontal swipe navigation between tabs
+    let touchStartX = 0;
+    let touchStartY = 0;
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length !== 1) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        const idx = TAB_ORDER.indexOf(state.tab);
+        if (dx < 0 && idx < TAB_ORDER.length - 1) {
+          switchTab(TAB_ORDER[idx + 1]);
+        } else if (dx > 0 && idx > 0) {
+          switchTab(TAB_ORDER[idx - 1]);
+        }
+      }
+    }, { passive: true });
 
     function showToast(msg) {
       const toast = document.getElementById('toast');
@@ -944,26 +1013,23 @@
     document.getElementById('modeIslanderBtn').addEventListener('click', () => {
       state.mode = 'islander';
       document.getElementById('modeIslanderBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition bg-white text-sky-900 shadow-sm';
-      document.getElementById('modeTouristBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition text-sky-100 hover:text-white';
+      document.getElementById('modeTouristBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition text-white/95 hover:text-white';
       renderHome();
     });
 
     document.getElementById('modeTouristBtn').addEventListener('click', () => {
       state.mode = 'tourist';
       document.getElementById('modeTouristBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition bg-white text-sky-900 shadow-sm';
-      document.getElementById('modeIslanderBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition text-sky-100 hover:text-white';
+      document.getElementById('modeIslanderBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition text-white/95 hover:text-white';
       renderHome();
     });
 
-    async function syncScheduleData(manual = false) {
-      const icon = document.getElementById('syncIcon');
-      icon.classList.add('animate-spin');
+    async function syncScheduleData() {
       try {
         const resp = await fetch(`./schedule_data.json?t=${Date.now()}`, { cache: 'no-store' });
         if (!resp.ok) throw new Error('not_found');
         const data = await resp.json();
         state.liveData = data;
-        document.getElementById('syncLabel').textContent = `公式同期: ${data.updated_at || '最新'}`;
         if (data.alerts && data.alerts.length > 0) {
           const topAlert = data.alerts[0];
           SCENARIOS.live = {
@@ -980,23 +1046,10 @@
         }
         renderHome();
         if (state.tab === 'changes') renderChanges();
-        if (manual) showToast('最新の公式データ (schedule_data.json) を読み込みました');
       } catch (err) {
-        if (manual) {
-          const now = new Date();
-          const hh = String(now.getHours()).padStart(2, '0');
-          const mm = String(now.getMinutes()).padStart(2, '0');
-          document.getElementById('syncLabel').textContent = `内蔵公式データ (${hh}:${mm}確認)`;
-          showToast('内蔵の公式時刻表データを表示しています');
-        }
-      } finally {
-        icon.classList.remove('animate-spin');
+        // Fallback silently to built-in official schedule
       }
     }
-
-    document.getElementById('syncBtn').addEventListener('click', () => {
-      syncScheduleData(true);
-    });
 
 
 
@@ -1028,10 +1081,95 @@
       });
     });
 
+    function renderArchiveTable() {
+      const container = document.getElementById('archiveTableContainer');
+      const events = getEventsList();
+      const byMonth = {};
+      for (const ev of events) {
+        const ym = ev.date.slice(0, 7);
+        if (!byMonth[ym]) byMonth[ym] = [];
+        byMonth[ym].push(ev);
+      }
+
+      const months = Object.keys(byMonth).sort();
+      container.className = 'max-h-56 overflow-y-auto space-y-2.5 text-xs';
+      container.innerHTML = months.map((ym, idx) => {
+        const [y, m] = ym.split('-').map(Number);
+        const list = byMonth[ym];
+        const chgCount = list.filter(e => e.isChanged).length;
+        const rowsHtml = list.map(ev => {
+          const dayNum = Number(ev.date.slice(8, 10));
+          return `
+            <div class="px-3 py-1.5 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-slate-700 w-14">${m}/${dayNum}${fmtWeekday(ev.date)}</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${ev.type === 'arr' ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'}">${ev.label}</span>
+                ${ev.isChanged ? '<span class="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold">変更あり</span>' : ''}
+              </div>
+              <span class="text-slate-500 font-medium">${ev.time}</span>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <details ${idx === 0 ? 'open' : ''} class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <summary class="px-3 py-2 bg-slate-50 font-bold text-slate-700 cursor-pointer select-none flex items-center justify-between">
+              <span>${y}年${m}月</span>
+              <span class="text-[11px] font-medium text-slate-500">${list.length}件${chgCount > 0 ? `・変更${chgCount}件` : ''}</span>
+            </summary>
+            <div class="divide-y divide-slate-100">
+              ${rowsHtml}
+            </div>
+          </details>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('openInfoModalBtn').addEventListener('click', () => {
+      renderArchiveTable();
+      document.getElementById('infoModal').classList.remove('hidden');
+      lucide.createIcons();
+    });
+    document.getElementById('closeInfoModalBtn').addEventListener('click', () => {
+      document.getElementById('infoModal').classList.add('hidden');
+    });
+    document.getElementById('infoModal').addEventListener('click', (e) => {
+      if (e.target.id === 'infoModal') document.getElementById('infoModal').classList.add('hidden');
+    });
+
+    document.getElementById('contactFormLink').addEventListener('click', (e) => {
+      if (e.currentTarget.getAttribute('href') === '#') {
+        e.preventDefault();
+        showToast('GoogleフォームのURLを設定すると開けるようになります');
+      }
+    });
+
+
+
+    const defaultCalCheckbox = document.getElementById('defaultCalCheckbox');
+    try {
+      const savedStartTab = localStorage.getItem('ogamaru_start_tab');
+      if (savedStartTab === 'calendar') {
+        defaultCalCheckbox.checked = true;
+      }
+    } catch (e) {}
+
+    defaultCalCheckbox.addEventListener('change', (e) => {
+      try {
+        localStorage.setItem('ogamaru_start_tab', e.target.checked ? 'calendar' : 'home');
+      } catch (err) {}
+      showToast(e.target.checked ? '次回からカレンダーを最初に開きます' : '次回からホーム画面を最初に開きます');
+    });
+
     // Init
     lucide.createIcons();
     renderHome();
-    syncScheduleData(false);
+    try {
+      if (localStorage.getItem('ogamaru_start_tab') === 'calendar') {
+        switchTab('calendar');
+      }
+    } catch (e) {}
+    syncScheduleData();
   </script>
 </body>
 </html>
