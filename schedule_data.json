@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-27 13:54 JST",
+  "updated_at": "2026-11-27 15:52 JST",
   "next_summary": "次のおがさわら丸の運航は、11/27(金) 東京 11時00分発、12/1(火) 父島 15時00分発 の予定です。ご乗船をお待ちしております。",
   "alerts": [],
   "recent_info": [
@@ -65,15 +65,17 @@
     }
   ],
   "hahajima_status": {
-    "status": "欠航・運休情報あり",
+    "status": "時刻変更・条件付情報あり",
     "source_url": "https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/"
   },
+  "parsed_override": null,
   "sources": {
     "ogamaru_info": "https://www.ogasawarakaiun.co.jp/info/",
     "ogamaru_next": "https://www.ogasawarakaiun.co.jp/info/?page_id=9",
+    "ogamaru_blog": "https://blog.livedoor.jp/ogasawarakaiun/",
     "ogamaru_service": "https://www.ogasawarakaiun.co.jp/service/",
     "hahajima_service": "https://www.ogasawarakaiun.co.jp/service/hahajima.html",
     "hahajima_status": "https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/"
   },
-  "fingerprint": "90d805f834ef3b43b778695fa42aae39a191a053e23f1356775df5c95a2808e9"
+  "fingerprint": "79685134f61473b9f8706613a441832316b7f1f4743ebf7a8509a0b007132d0f"
 }
