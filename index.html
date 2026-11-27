@@ -460,12 +460,22 @@
     // =========================================================================
     // 2. App State
     // =========================================================================
-    function getTodayStr() {
+    function getJstNow() {
       const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const d = String(now.getDate()).padStart(2, '0');
+      return new Date(now.getTime() + (now.getTimezoneOffset() + 540) * 60000);
+    }
+
+    function getTodayStr() {
+      const jst = getJstNow();
+      const y = jst.getFullYear();
+      const m = String(jst.getMonth() + 1).padStart(2, '0');
+      const d = String(jst.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
+    }
+
+    function getJstTimeStr() {
+      const jst = getJstNow();
+      return `${String(jst.getHours()).padStart(2, '0')}:${String(jst.getMinutes()).padStart(2, '0')}`;
     }
 
     const INITIAL_TODAY = getTodayStr();
@@ -595,12 +605,25 @@
     }
 
     function getShipStatus(dateStr) {
+      const nowTime = getJstTimeStr();
+      const activeChange = SCENARIOS[state.scenario];
       for (const v of BASE_VOYAGES) {
-        if (v.chichiArr === dateStr) return '本日 父島入港日';
+        const arrT = (activeChange && activeChange.targetDate === v.chichiArr && activeChange.type === 'arr' && activeChange.newTime) ? activeChange.newTime : v.arrTime;
+        const depT = (activeChange && activeChange.targetDate === v.chichiDep && activeChange.type === 'dep' && activeChange.newTime) ? activeChange.newTime : v.depTime;
+
+        if (v.tokyoDep === dateStr) {
+          return nowTime < '11:00' ? '東京（竹芝）停泊中（本日出港）' : '航海中（東京 → 父島）';
+        }
+        if (v.chichiArr === dateStr) {
+          return nowTime < arrT ? `航海中（東京 → 父島・本日${arrT}入港）` : '父島停泊中（本日入港）';
+        }
         if (v.stayDates.includes(dateStr)) return '父島停泊中';
-        if (v.chichiDep === dateStr) return '本日 父島出港日';
-        if (v.tokyoDep === dateStr) return '航海中（東京 → 父島）';
-        if (v.tokyoArr === dateStr) return '航海中（父島 → 東京）';
+        if (v.chichiDep === dateStr) {
+          return nowTime < depT ? `父島停泊中（本日${depT}出港）` : '航海中（父島 → 東京）';
+        }
+        if (v.tokyoArr === dateStr) {
+          return nowTime < '15:00' ? '航海中（父島 → 東京）' : '東京（竹芝）停泊中';
+        }
       }
       return '東京（竹芝）停泊中';
     }
@@ -1050,7 +1073,23 @@
         if (!resp.ok) throw new Error('not_found');
         const data = await resp.json();
         state.liveData = data;
-        if (warnEl) warnEl.classList.add('hidden');
+
+        // Freshness check (warn if older than 24 hours)
+        let isStale = false;
+        if (data.updated_iso) {
+          const ageHours = (Date.now() - Date.parse(data.updated_iso)) / (1000 * 60 * 60);
+          if (!Number.isNaN(ageHours) && ageHours > 24) {
+            isStale = true;
+          }
+        }
+        if (warnEl) {
+          if (isStale) {
+            warnEl.textContent = `※公式データの更新が24時間以上前（${data.updated_at || ''}）です`;
+            warnEl.classList.remove('hidden');
+          } else {
+            warnEl.classList.add('hidden');
+          }
+        }
 
         const ov = data.parsed_override;
         if ((data.alerts && data.alerts.length > 0) || ov) {
@@ -1066,11 +1105,16 @@
             updatedAt: data.updated_at || '最新'
           };
           state.scenario = 'live';
+        } else {
+          state.scenario = 'none';
         }
         renderHome();
         if (state.tab === 'changes') renderChanges();
       } catch (err) {
-        if (warnEl) warnEl.classList.remove('hidden');
+        if (warnEl) {
+          warnEl.textContent = '※最新情報の取得を確認できていません（予定ダイヤを表示中）';
+          warnEl.classList.remove('hidden');
+        }
       }
     }
 
@@ -1193,6 +1237,7 @@
       }
     } catch (e) {}
     syncScheduleData();
+    setInterval(syncScheduleData, 10 * 60 * 1000);
   </script>
   <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "94dbcfccfff8472db558f47fd0a95aea"}'></script><!-- End Cloudflare Web Analytics -->
 </body>

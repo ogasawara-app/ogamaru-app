@@ -3,9 +3,9 @@
 おがさわら丸・ははじま丸 公式情報自動取得 & 通知スクリプト
 ----------------------------------------------------------------
 機能:
-1. 小笠原海運（公式サイト・小笠原種まきブログ）および東京宝島うみそら便（母島）から最新情報を取得
-2. 凡例テキストを除外したうえで、当日の運航状況・緊急変更キーワードを正確に検知
-3. 変更対象の日付・新時刻を構造化して schedule_data.json に出力（画面側と自動連動）
+1. 小笠原海運（公式サイト・小笠原種まきブログAtom）および東京宝島うみそら便（母島）から最新情報を取得
+2. 凡例・注意書きを除外し、実際の港・便ステータス部分のみから正確に判定
+3. 時刻変更の抽出は「変更前→変更後」が明確な場合のみ自動反映し、曖昧な場合は安全のため自動上書きしない
 4. 差分があれば schedule_history.csv へ自動追記し、LINE / Webhook へ通知を送信
 """
 
@@ -16,6 +16,7 @@ import json
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -29,7 +30,8 @@ JST = timezone(timedelta(hours=9))
 SOURCES = {
     "ogamaru_info": "https://www.ogasawarakaiun.co.jp/info/",
     "ogamaru_next": "https://www.ogasawarakaiun.co.jp/info/?page_id=9",
-    "ogamaru_blog": "https://blog.livedoor.jp/ogasawarakaiun/",
+    "ogamaru_blog_feed": "http://blog.livedoor.jp/ogasawarakaiun/atom.xml",
+    "ogamaru_blog": "http://blog.livedoor.jp/ogasawarakaiun/",
     "ogamaru_service": "https://www.ogasawarakaiun.co.jp/service/",
     "hahajima_service": "https://www.ogasawarakaiun.co.jp/service/hahajima.html",
     "hahajima_status": "https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/",
@@ -42,11 +44,10 @@ ALERT_KEYWORDS = [
 
 OUTPUT_JSON = Path("schedule_data.json")
 HISTORY_CSV = Path("schedule_history.csv")
-USER_AGENT = "OgamaruScheduleBot/1.1 (+https://www.ogasawarakaiun.co.jp/)"
+USER_AGENT = "OgamaruScheduleBot/1.2 (+https://www.ogasawarakaiun.co.jp/)"
 
 
 def fetch_html(url: str, timeout: int = 15) -> str:
-    """公式サイトからHTMLを取得する。"""
     req = Request(url, headers={"User-Agent": USER_AGENT})
     with urlopen(req, timeout=timeout) as resp:
         raw = resp.read()
@@ -55,7 +56,6 @@ def fetch_html(url: str, timeout: int = 15) -> str:
 
 
 def parse_ogamaru_next(html: str) -> str:
-    """次回運航予定ページ (?page_id=9) の本文を抽出する。"""
     soup = BeautifulSoup(html, "html.parser")
     main = soup.select_one("article, .entry-content, main, #main") or soup.body
     text = main.get_text(" ", strip=True) if main else soup.get_text(" ", strip=True)
@@ -63,10 +63,8 @@ def parse_ogamaru_next(html: str) -> str:
 
 
 def parse_ogamaru_info(html: str) -> List[Dict[str, Any]]:
-    """お知らせ・新着情報一覧から直近記事と緊急キーワード有無を抽出する。"""
     soup = BeautifulSoup(html, "html.parser")
     items: List[Dict[str, Any]] = []
-
     articles = soup.select("article, .post, .info-list li, .news-list li")
     if not articles:
         for a in soup.select("a[href*='?p='], a[href*='/info/']"):
@@ -97,22 +95,35 @@ def parse_ogamaru_info(html: str) -> List[Dict[str, Any]]:
     return items
 
 
-def parse_ogamaru_blog(html: str) -> List[Dict[str, Any]]:
-    """小笠原種まきブログ（Livedoor）の最新記事を抽出する。"""
-    soup = BeautifulSoup(html, "html.parser")
+def parse_ogamaru_blog_atom(xml_text: str) -> List[Dict[str, Any]]:
+    """小笠原種まきブログのAtomフィード(XML)から最新記事を確実に抽出する。"""
     items: List[Dict[str, Any]] = []
-    articles = soup.select("article, .article-outer, .article")
-    for art in articles[:5]:
-        title_el = art.select_one("h1, h2, .article-title, .article-title a")
-        title = title_el.get_text(" ", strip=True) if title_el else ""
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return items
+
+    ns = {"atom": "http://www.w3.org/2005/Atom"}
+    entries = root.findall("atom:entry", ns) or root.findall("entry")
+    def find_el(parent, *paths):
+        for p in paths:
+            el = parent.find(p, ns)
+            if el is not None:
+                return el
+        return None
+
+    for entry in entries[:5]:
+        title_el = find_el(entry, "atom:title", "title")
+        link_el = find_el(entry, "atom:link[@rel='alternate']", "atom:link", "link")
+        summary_el = find_el(entry, "atom:summary", "atom:content", "summary")
+
+        title = (title_el.text or "").strip() if title_el is not None else ""
         if not title:
             continue
-        link_el = art.select_one(".article-title a[href], h1 a[href], h2 a[href], a[href]")
-        url = link_el["href"] if link_el else SOURCES["ogamaru_blog"]
-        body_text = art.get_text(" ", strip=True)
-        # 休業案内のみの定例記事は運航変更アラートから除外
+        url = link_el.attrib.get("href", SOURCES["ogamaru_blog"]) if link_el is not None else SOURCES["ogamaru_blog"]
+        summary_text = (summary_el.text or "") if summary_el is not None else ""
         is_office_notice = "営業所" in title and "休業" in title and "出港" not in title and "入港" not in title
-        matched = [] if is_office_notice else [kw for kw in ALERT_KEYWORDS if kw in title or kw in body_text]
+        matched = [] if is_office_notice else [kw for kw in ALERT_KEYWORDS if kw in title or kw in summary_text]
         items.append({
             "title": title,
             "url": url,
@@ -124,34 +135,34 @@ def parse_ogamaru_blog(html: str) -> List[Dict[str, Any]]:
 
 def parse_hahajima_status(html: str) -> Dict[str, str]:
     """
-    東京宝島うみそら便（母島）から実際の運航ステータスを抽出する。
-    ページ上部の凡例（「● 欠航・運休」「● 条件付就航・時間変更...」）を誤検知しないよう、
-    凡例フレーズを除去したうえで港・便ごとのステータス表記を判定する。
+    東京宝島うみそら便（母島）のステータスを抽出する。
+    凡例やページ全体の注意書き・画像altを除外し、「【母島】母島 沖港」以降の本文のみを判定する。
     """
     soup = BeautifulSoup(html, "html.parser")
-    # 凡例テキストを除去して誤判定を防ぐ
     text = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
-    cleaned = text
+
+    # 「【母島】」または「母島 沖港」以降を切り出し、フッターの注意書きより前だけを見る
+    m = re.search(r"(【母島】|母島\s*沖港)(.*?)(本ページの情報に基づく|大型客船は|$)", text)
+    if m:
+        port_section = m.group(2)
+    else:
+        port_section = ""
+
+    # 凡例そのものが混入していた場合も念のため除去
     for legend_phrase in [
         "運航(予定)",
         "欠航・運休",
         "条件付就航・時間変更・ダイヤ変更・その他情報あり",
     ]:
-        cleaned = cleaned.replace(legend_phrase, " ")
-
-    # 港ブロック（母島 沖港周辺）または画像altテキストを確認
-    alt_texts = " ".join(img.get("alt", "") for img in soup.select("img[alt]"))
-    target_zone = f"{alt_texts} {cleaned}"
+        port_section = port_section.replace(legend_phrase, " ")
 
     status = "通常運航"
-    if re.search(r"(全便欠航|本日欠航|欠航決定|欠航しております|運休しております)", target_zone):
+    if re.search(r"(全便欠航|本日欠航|欠航決定|欠航|運休)", port_section):
         status = "欠航・運休情報あり"
-    elif re.search(r"(時刻変更|時間変更|繰り上げ|繰り下げ|条件付)", target_zone):
+    elif re.search(r"(時刻変更|時間変更|繰り上げ|繰り下げ|条件付)", port_section):
         status = "時刻変更・条件付情報あり"
-    elif "運航" in target_zone:
+    elif "運航" in port_section:
         status = "通常運航"
-    else:
-        status = "公式サイトで確認"
 
     return {
         "status": status,
@@ -161,21 +172,29 @@ def parse_hahajima_status(html: str) -> Dict[str, str]:
 
 def extract_schedule_override(text: str, now_jst: datetime) -> Optional[Dict[str, str]]:
     """
-    お知らせや次回運航文から、日付・種別(arr/dep)・変更後時刻を簡易抽出する。
-    例: 「12/1(火) 父島 10時00分発（繰り上げ）」「11/28(土) 父島 14:30着（遅延）」
+    変更前後の時刻を誤認しないよう、明確なパターンがある場合のみ時刻を抽出する。
+    曖昧な場合（複数時刻があり前後が判別できない等）は None を返し、安全のため自動上書きしない。
     """
     if not any(kw in text for kw in ["変更", "遅延", "繰り上げ", "繰り下げ", "延発", "早め"]):
         return None
 
     m_date = re.search(r"(\d{1,2})[/月](\d{1,2})日?", text)
-    m_time = re.search(r"(\d{1,2})[:時](\d{2})分?", text)
-    if not (m_date and m_time):
+    if not m_date:
         return None
 
-    month = int(m_date.group(1))
-    day = int(m_date.group(2))
-    hour = int(m_time.group(1))
-    minute = int(m_time.group(2))
+    # 1) 「15時00分から13時00分に変更」「15:00→13:00」など変更後が明示されているパターンを最優先
+    m_after = re.search(r"(?:から|→|⇒|へ)\s*(\d{1,2})[:時](\d{2})分?", text)
+    all_times = re.findall(r"(\d{1,2})[:時](\d{2})分?", text)
+
+    if m_after:
+        hour, minute = int(m_after.group(1)), int(m_after.group(2))
+    elif len(all_times) == 1:
+        hour, minute = int(all_times[0][0]), int(all_times[0][1])
+    else:
+        # 複数の時刻があるのに変更後が明示されていない場合は安全のため自動上書きしない
+        return None
+
+    month, day = int(m_date.group(1)), int(m_date.group(2))
     year = now_jst.year
     if month < now_jst.month - 6:
         year += 1
@@ -192,7 +211,6 @@ def extract_schedule_override(text: str, now_jst: datetime) -> Optional[Dict[str
     if not evt_type:
         return None
 
-    # 通常時刻と同じなら変更オーバーライド不要
     if (evt_type == "arr" and new_time == "11:00") or (evt_type == "dep" and new_time == "15:00"):
         return None
 
@@ -204,7 +222,6 @@ def extract_schedule_override(text: str, now_jst: datetime) -> Optional[Dict[str
 
 
 def compute_fingerprint(data: Dict[str, Any]) -> str:
-    """更新時刻を除いた実質データのハッシュ値を計算して差分を判定する。"""
     comparable = {
         "next_summary": data.get("next_summary"),
         "alerts": data.get("alerts"),
@@ -244,7 +261,6 @@ def send_webhook(message: str, webhook_url: str) -> bool:
 
 
 def build_notification_text(data: Dict[str, Any]) -> str:
-    """公式文章の丸ごと転載を避け、事実の検知と公式トップページへの案内を作成する。"""
     lines = ["【おが丸入出港カレンダー（非公式）】運航情報に更新がありました"]
     if data.get("alerts"):
         kws = sorted({kw for a in data["alerts"] for kw in a.get("matched_keywords", [])})
@@ -265,62 +281,54 @@ def build_notification_text(data: Dict[str, Any]) -> str:
 
 
 def run_test_mode() -> int:
-    """凡例誤検知防止・ブログ監視・時刻オーバーライド抽出をテストする。"""
-    now_jst = datetime(2026, 11, 27, 15, 45, tzinfo=JST)
-    sample_next_html = """
-    <html><body><main>
-      <p>次のおがさわら丸の運航は、11/28(土) 父島 14時30分着（遅延）の予定です。</p>
-    </main></body></html>
-    """
-    sample_info_html = """
-    <html><body>
-      <article>
-        <h2><a href="https://www.ogasawarakaiun.co.jp/info/?p=13584">【速報】2027年7～12月おがさわら丸時刻表</a></h2>
-      </article>
-    </body></html>
-    """
-    sample_blog_html = """
-    <html><body>
-      <article class="article">
-        <h2 class="article-title"><a href="https://blog.livedoor.jp/ogasawarakaiun/archives/1083814561.html">11月24日～27日は休業となります（父島営業所）</a></h2>
-      </article>
-    </body></html>
-    """
-    # 凡例（「欠航・運休」等）を含んでいても、実際が「運航」なら誤判定しないことを確認
+    now_jst = datetime(2026, 11, 27, 16, 0, tzinfo=JST)
+
+    # 1) 凡例付きの実サイトに近いHTMLで通常運航と判定されること
     sample_haha_html = """
     <html><body>
-      <div>凡例: 運航(予定) 欠航・運休 条件付就航・時間変更・ダイヤ変更・その他情報あり</div>
-      <div>【母島】母島 沖港 運航</div>
+      <div class="legend">
+        <img alt="運航(予定)" src="a.png"> 運航(予定)
+        <img alt="欠航・運休" src="b.png"> 欠航・運休
+        <img alt="条件付就航・時間変更・ダイヤ変更・その他情報あり" src="c.png"> 条件付就航・時間変更・ダイヤ変更・その他情報あり
+      </div>
+      <div class="port">【母島】母島 沖港 運航</div>
+      <footer>本ページの情報に基づく損害については責任を負いかねます。</footer>
     </body></html>
     """
+    assert parse_hahajima_status(sample_haha_html)["status"] == "通常運航"
 
-    next_summary = parse_ogamaru_next(sample_next_html)
-    info_items = parse_ogamaru_info(sample_info_html) + parse_ogamaru_blog(sample_blog_html)
-    alerts = [item for item in info_items if item["is_alert"]]
-    haha_status = parse_hahajima_status(sample_haha_html)
-    parsed_override = extract_schedule_override(next_summary, now_jst)
+    # 2) 「15時00分から13時00分に変更」で変更後の13:00を正しく取得すること
+    ov1 = extract_schedule_override("12月1日の父島出港時刻を15時00分から13時00分に変更します。", now_jst)
+    assert ov1 == {"target_date": "2026-12-01", "type": "dep", "new_time": "13:00"}, f"ov1={ov1}"
 
-    result = {
-        "updated_at": now_jst.strftime("%Y-%m-%d %H:%M JST"),
-        "next_summary": next_summary,
-        "alerts": alerts,
-        "recent_info": info_items,
-        "hahajima_status": haha_status,
-        "parsed_override": parsed_override,
-        "sources": SOURCES,
-    }
-    result["fingerprint"] = compute_fingerprint(result)
+    # 3) 曖昧な複数時刻（「11:00入港、15:00出港を変更予定」）は誤上書きせず None を返すこと
+    ov2 = extract_schedule_override("12月1日の11:00入港、15:00出港は変更の可能性があります。", now_jst)
+    assert ov2 is None, f"ov2={ov2}"
 
-    assert haha_status["status"] == "通常運航", f"Unexpected haha_status: {haha_status}"
-    assert parsed_override == {"target_date": "2026-11-28", "type": "arr", "new_time": "14:30"}, f"Unexpected override: {parsed_override}"
-    print("ALL TESTS PASSED!")
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    # 4) Atomフィードからブログ記事が取得できること
+    sample_atom = """<?xml version="1.0" encoding="utf-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <entry>
+        <title>11月24日～27日は休業となります（父島営業所）</title>
+        <link rel="alternate" href="http://blog.livedoor.jp/ogasawarakaiun/archives/1.html" />
+      </entry>
+      <entry>
+        <title>おがさわら丸は11月3日父島発に変更になります</title>
+        <link rel="alternate" href="http://blog.livedoor.jp/ogasawarakaiun/archives/2.html" />
+      </entry>
+    </feed>"""
+    blog_items = parse_ogamaru_blog_atom(sample_atom)
+    assert len(blog_items) == 2
+    assert blog_items[0]["is_alert"] is False
+    assert blog_items[1]["is_alert"] is True
+
+    print("ALL STRICT TESTS PASSED!")
     return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="おがさわら丸・ははじま丸 公式情報更新スクリプト")
-    parser.add_argument("--test", action="store_true", help="モックHTMLでローカル動作確認を行う")
+    parser.add_argument("--test", action="store_true", help="テストを実行する")
     parser.add_argument("--output", default=str(OUTPUT_JSON), help="出力JSONファイルパス")
     args = parser.parse_args()
 
@@ -347,10 +355,10 @@ def main() -> int:
 
     blog_items: List[Dict[str, Any]] = []
     try:
-        blog_html = fetch_html(SOURCES["ogamaru_blog"])
-        blog_items = parse_ogamaru_blog(blog_html)
+        atom_xml = fetch_html(SOURCES["ogamaru_blog_feed"])
+        blog_items = parse_ogamaru_blog_atom(atom_xml)
     except Exception as e:
-        print(f"[WARN] 公式ブログの取得をスキップしました: {e}", file=sys.stderr)
+        print(f"[WARN] 公式ブログフィードの取得をスキップしました: {e}", file=sys.stderr)
 
     next_summary = parse_ogamaru_next(next_html)
     info_items = parse_ogamaru_info(info_html) + blog_items
@@ -360,6 +368,7 @@ def main() -> int:
 
     new_data = {
         "updated_at": now_jst.strftime("%Y-%m-%d %H:%M JST"),
+        "updated_iso": now_jst.isoformat(),
         "next_summary": next_summary,
         "alerts": alerts,
         "recent_info": info_items,
@@ -372,7 +381,7 @@ def main() -> int:
 
     changed = new_fingerprint != prev_fingerprint
     out_path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"[INFO] {out_path} を保存しました (changed={changed}, alerts={len(alerts)}, haha={haha_status['status']})")
+    print(f"[INFO] {out_path} を保存しました (changed={changed}, alerts={len(alerts)}, blog={len(blog_items)}, haha={haha_status['status']})")
 
     if changed:
         is_new_csv = not HISTORY_CSV.exists()
