@@ -178,6 +178,9 @@
           </div>
         </div>
       </div>
+      <p id="syncWarningNote" class="hidden text-center text-[11px] text-amber-700 font-medium pt-0.5">
+        ※最新情報の取得を確認できていません（予定ダイヤを表示中）
+      </p>
       <p class="text-center text-xs text-slate-500 pt-1">
         ※非公式アプリです。最新の正確な運航情報は<a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="underline hover:text-slate-600">小笠原海運公式サイト</a>をご確認ください。
       </p>
@@ -265,6 +268,8 @@
             <option value="2026-12">2026年12月</option>
             <option value="2027-01">2027年1月</option>
             <option value="2027-02">2027年2月</option>
+            <option value="2027-03">2027年3月</option>
+            <option value="2027-04">2027年4月</option>
           </select>
         </div>
 
@@ -370,9 +375,9 @@
     // chichiDep: 父島発 (15:00)
     // tokyoArr: 東京着 (15:00)
     const BASE_VOYAGES = [
-      // 2026-11
-      { id: '2026-11-01', tokyoDep: '2026-10-31', chichiArr: '2026-11-01', stayDates: ['2026-11-02', '2026-11-03'], chichiDep: '2026-11-04', tokyoArr: '2026-11-05', arrTime: '11:00', depTime: '15:00' },
-      { id: '2026-11-08', tokyoDep: '2026-11-07', chichiArr: '2026-11-08', stayDates: ['2026-11-09', '2026-11-10'], chichiDep: '2026-11-11', tokyoArr: '2026-11-12', arrTime: '11:00', depTime: '15:00' },
+      // 2026-11 (11/3, 11/10 は台風31号・32号による繰り上げ実績を反映)
+      { id: '2026-11-01', tokyoDep: '2026-10-31', chichiArr: '2026-11-01', stayDates: ['2026-11-02'], chichiDep: '2026-11-03', tokyoArr: '2026-11-04', arrTime: '11:00', depTime: '15:00', depChanged: true },
+      { id: '2026-11-08', tokyoDep: '2026-11-07', chichiArr: '2026-11-08', stayDates: ['2026-11-09'], chichiDep: '2026-11-10', tokyoArr: '2026-11-11', arrTime: '11:00', depTime: '14:00', depChanged: true },
       { id: '2026-11-14', tokyoDep: '2026-11-13', chichiArr: '2026-11-14', stayDates: ['2026-11-15', '2026-11-16'], chichiDep: '2026-11-17', tokyoArr: '2026-11-18', arrTime: '11:00', depTime: '15:00' },
       { id: '2026-11-20', tokyoDep: '2026-11-19', chichiArr: '2026-11-20', stayDates: ['2026-11-21', '2026-11-22'], chichiDep: '2026-11-23', tokyoArr: '2026-11-24', arrTime: '11:00', depTime: '15:00' },
       { id: '2026-11-28', tokyoDep: '2026-11-27', chichiArr: '2026-11-28', stayDates: ['2026-11-29', '2026-11-30'], chichiDep: '2026-12-01', tokyoArr: '2026-12-02', arrTime: '11:00', depTime: '15:00' },
@@ -392,7 +397,19 @@
       { id: '2027-02-08', tokyoDep: '2027-02-07', chichiArr: '2027-02-08', stayDates: ['2027-02-09', '2027-02-10'], chichiDep: '2027-02-11', tokyoArr: '2027-02-12', arrTime: '11:00', depTime: '15:00' },
       { id: '2027-02-14', tokyoDep: '2027-02-13', chichiArr: '2027-02-14', stayDates: ['2027-02-15', '2027-02-16'], chichiDep: '2027-02-17', tokyoArr: '2027-02-18', arrTime: '11:00', depTime: '15:00' },
       { id: '2027-02-21', tokyoDep: '2027-02-20', chichiArr: '2027-02-21', stayDates: ['2027-02-22', '2027-02-23'], chichiDep: '2027-02-24', tokyoArr: '2027-02-25', arrTime: '11:00', depTime: '15:00' },
-      { id: '2027-02-27', tokyoDep: '2027-02-26', chichiArr: '2027-02-27', stayDates: ['2027-02-28', '2027-03-01'], chichiDep: '2027-03-02', tokyoArr: '2027-03-03', arrTime: '11:00', depTime: '15:00' }
+      { id: '2027-02-27', tokyoDep: '2027-02-26', chichiArr: '2027-02-27', stayDates: ['2027-02-28', '2027-03-01'], chichiDep: '2027-03-02', tokyoArr: '2027-03-03', arrTime: '11:00', depTime: '15:00' },
+      // 2027-03
+      { id: '2027-03-06', tokyoDep: '2027-03-05', chichiArr: '2027-03-06', stayDates: ['2027-03-07', '2027-03-08'], chichiDep: '2027-03-09', tokyoArr: '2027-03-10', arrTime: '11:00', depTime: '15:00' },
+      { id: '2027-03-12', tokyoDep: '2027-03-11', chichiArr: '2027-03-12', stayDates: ['2027-03-13', '2027-03-14'], chichiDep: '2027-03-15', tokyoArr: '2027-03-16', arrTime: '11:00', depTime: '15:00' },
+      { id: '2027-03-18', tokyoDep: '2027-03-17', chichiArr: '2027-03-18', stayDates: ['2027-03-19', '2027-03-20'], chichiDep: '2027-03-21', tokyoArr: '2027-03-22', arrTime: '11:00', depTime: '15:00' },
+      { id: '2027-03-25', tokyoDep: '2027-03-24', chichiArr: '2027-03-25', stayDates: ['2027-03-26', '2027-03-27'], chichiDep: '2027-03-28', tokyoArr: '2027-03-29', arrTime: '11:00', depTime: '15:00' },
+      { id: '2027-03-31', tokyoDep: '2027-03-30', chichiArr: '2027-03-31', stayDates: ['2027-04-01', '2027-04-02'], chichiDep: '2027-04-03', tokyoArr: '2027-04-04', arrTime: '11:00', depTime: '15:00' },
+      // 2027-04
+      { id: '2027-04-07', tokyoDep: '2027-04-06', chichiArr: '2027-04-07', stayDates: ['2027-04-08', '2027-04-09'], chichiDep: '2027-04-10', tokyoArr: '2027-04-11', arrTime: '11:00', depTime: '15:00' },
+      { id: '2027-04-13', tokyoDep: '2027-04-12', chichiArr: '2027-04-13', stayDates: ['2027-04-14', '2027-04-15'], chichiDep: '2027-04-16', tokyoArr: '2027-04-17', arrTime: '11:00', depTime: '15:00' },
+      { id: '2027-04-19', tokyoDep: '2027-04-18', chichiArr: '2027-04-19', stayDates: ['2027-04-20', '2027-04-21'], chichiDep: '2027-04-22', tokyoArr: '2027-04-23', arrTime: '11:00', depTime: '15:00' },
+      { id: '2027-04-25', tokyoDep: '2027-04-24', chichiArr: '2027-04-25', stayDates: ['2027-04-26', '2027-04-27'], chichiDep: '2027-04-28', tokyoArr: '2027-04-29', arrTime: '11:00', depTime: '15:00' },
+      { id: '2027-05-01', tokyoDep: '2027-04-30', chichiArr: '2027-05-01', stayDates: ['2027-05-02', '2027-05-03'], chichiDep: '2027-05-04', tokyoArr: '2027-05-05', arrTime: '11:00', depTime: '15:00' }
     ];
 
     // Hahajima Maru off-days / special days from official table (2026-11 to 2027-02)
@@ -403,13 +420,17 @@
     // - Regular operating day: 7:30->9:30, 14:00->16:00
     // - Cancelled/rest days explicitly listed below:
     const HAHAJIMA_REST_DAYS = new Set([
-      '2026-11-05', '2026-11-06', '2026-11-12', '2026-11-18', '2026-11-24', '2026-11-26',
+      '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-11', '2026-11-12', '2026-11-18', '2026-11-24', '2026-11-26',
       '2026-12-02', '2026-12-03', '2026-12-09', '2026-12-15', '2026-12-21', '2026-12-27',
       '2027-01-03', '2027-01-04', '2027-01-11', '2027-01-17', '2027-01-18', '2027-01-24', '2027-01-25', '2027-01-31',
-      '2027-02-06', '2027-02-12', '2027-02-18', '2027-02-19', '2027-02-25'
+      '2027-02-06', '2027-02-12', '2027-02-18', '2027-02-19', '2027-02-25',
+      '2027-03-03', '2027-03-04', '2027-03-10', '2027-03-16', '2027-03-22', '2027-03-23', '2027-03-29',
+      '2027-04-04', '2027-04-05', '2027-04-11', '2027-04-17', '2027-04-23', '2027-04-29'
     ]);
     const HAHAJIMA_SPECIAL = {
-      '2026-11-07': { out: '7:30 → 9:30', back: '10:30 → 12:30', note: '臨時・午前便' }
+      '2026-11-03': { out: '7:30 → 9:30', back: '10:00 → 12:00', note: '台風31号・母島発繰り上げ' },
+      '2026-11-07': { out: '7:30 → 9:30', back: '10:30 → 12:30', note: '臨時・午前便' },
+      '2026-11-10': { out: '7:30 → 9:30', back: '11:00 → 13:00', note: '台風32号・母島発繰り上げ' }
     };
 
     const SCENARIOS = {
@@ -455,10 +476,10 @@
       mode: 'islander', // 'islander' | 'tourist'
       simDate: INITIAL_TODAY,
       scenario: 'none', // 'none' | 'live'
-      calYear: (initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 2) ? initY : 2026,
-      calMonth: (initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 2) ? initM : 11,
+      calYear: (initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 4) ? initY : 2026,
+      calMonth: (initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 4) ? initM : 11,
       selectedDate: INITIAL_TODAY,
-      hahaMonth: ((initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 2)) ? `${initY}-${String(initM).padStart(2, '0')}` : '2026-11',
+      hahaMonth: ((initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 4)) ? `${initY}-${String(initM).padStart(2, '0')}` : '2026-11',
       hahaFilter: 'all',
       liveData: null
     };
@@ -508,7 +529,7 @@
         });
 
         let depTime = v.depTime;
-        let depChanged = false;
+        let depChanged = Boolean(v.depChanged);
         if (activeChange && activeChange.targetDate === v.chichiDep && activeChange.type === 'dep') {
           depTime = activeChange.newTime;
           depChanged = true;
@@ -541,7 +562,7 @@
         }
         if (v.chichiDep === dateStr) {
           const isChg = activeChange && activeChange.targetDate === dateStr && activeChange.type === 'dep';
-          ogamaru = { role: 'dep', label: '父島出港', time: isChg ? activeChange.newTime : v.depTime, isChanged: isChg, voyage: v };
+          ogamaru = { role: 'dep', label: '父島出港', time: isChg ? activeChange.newTime : v.depTime, isChanged: isChg || Boolean(v.depChanged), voyage: v };
           break;
         }
         if (v.tokyoDep === dateStr) {
@@ -1023,20 +1044,24 @@
     });
 
     async function syncScheduleData() {
+      const warnEl = document.getElementById('syncWarningNote');
       try {
         const resp = await fetch(`./schedule_data.json?t=${Date.now()}`, { cache: 'no-store' });
         if (!resp.ok) throw new Error('not_found');
         const data = await resp.json();
         state.liveData = data;
-        if (data.alerts && data.alerts.length > 0) {
-          const topAlert = data.alerts[0];
+        if (warnEl) warnEl.classList.add('hidden');
+
+        const ov = data.parsed_override;
+        if ((data.alerts && data.alerts.length > 0) || ov) {
+          const topAlert = (data.alerts && data.alerts[0]) || null;
           SCENARIOS.live = {
             id: 'live',
-            targetDate: '',
-            type: '',
-            newTime: '',
+            targetDate: ov ? ov.target_date : '',
+            type: ov ? ov.type : '',
+            newTime: ov ? ov.new_time : '',
             oldTime: '',
-            title: topAlert.title,
+            title: topAlert ? topAlert.title : `${ov.target_date} 運航時刻変更のお知らせ`,
             desc: data.next_summary || '公式サイトで詳細をご確認ください。',
             updatedAt: data.updated_at || '最新'
           };
@@ -1045,7 +1070,7 @@
         renderHome();
         if (state.tab === 'changes') renderChanges();
       } catch (err) {
-        // Fallback silently to built-in official schedule
+        if (warnEl) warnEl.classList.remove('hidden');
       }
     }
 
@@ -1059,7 +1084,7 @@
     });
 
     document.getElementById('calNextMonth').addEventListener('click', () => {
-      if (state.calYear === 2027 && state.calMonth === 2) return;
+      if (state.calYear === 2027 && state.calMonth === 4) return;
       state.calMonth++;
       if (state.calMonth > 12) { state.calMonth = 1; state.calYear++; }
       renderCalendar();
@@ -1081,7 +1106,7 @@
 
     function renderArchiveTable() {
       const container = document.getElementById('archiveTableContainer');
-      const events = getEventsList();
+      const events = getEventsList().filter(ev => ev.date <= state.simDate);
       const byMonth = {};
       for (const ev of events) {
         const ym = ev.date.slice(0, 7);
