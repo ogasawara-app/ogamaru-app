@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>おが丸入出港カレンダー（非公式）</title>
+  <title>おが丸・はは丸 入出港カレンダー（非公式）</title>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#0369a1" />
   <link rel="icon" type="image/jpeg" href="./icon.jpg" />
   <link rel="apple-touch-icon" href="./icon.jpg" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
@@ -28,7 +30,7 @@
       color: #0369a1;
     }
     .tab-active svg {
-      stroke-width: 2.4;
+      stroke-width: 2.5;
     }
     .no-scrollbar::-webkit-scrollbar {
       display: none;
@@ -44,45 +46,37 @@
   <!-- Top Header -->
   <header class="bonin-gradient text-white shadow-sm sticky top-0 z-30">
     <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2.5 min-w-0">
+      <div class="flex items-center gap-2 min-w-0">
         <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
           <i data-lucide="ship" class="w-4 h-4 text-sky-100"></i>
         </div>
         <div class="flex items-center gap-1.5 min-w-0">
-          <h1 class="text-sm sm:text-base font-bold tracking-tight leading-tight truncate">おが丸入出港カレンダー</h1>
+          <h1 class="text-xs sm:text-base font-bold tracking-tight leading-tight truncate">おが丸・はは丸 入出港カレンダー</h1>
           <span class="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-bold text-white shrink-0">非公式</span>
         </div>
       </div>
 
       <div class="flex items-center gap-1.5 shrink-0">
-        <!-- Mode Toggle: 島民 / 観光 -->
-        <div class="flex items-center bg-slate-900/25 p-0.5 rounded-full border border-white/15">
-          <button id="modeIslanderBtn" type="button" class="px-3 py-1 rounded-full text-xs font-semibold transition bg-white text-sky-900 shadow-sm">
-            島民
-          </button>
-          <button id="modeTouristBtn" type="button" class="px-3 py-1 rounded-full text-xs font-semibold transition text-white/95 hover:text-white">
-            観光
-          </button>
-        </div>
-        <!-- Unobtrusive Info / Terms / Archive button -->
-        <button id="openInfoModalBtn" type="button" aria-label="アプリ情報・過去データ" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sky-100 transition">
-          <i data-lucide="info" class="w-4 h-4"></i>
+        <!-- Info / Settings / Archive button -->
+        <button id="openInfoModalBtn" type="button" aria-label="設定・アプリ情報" class="px-2.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 flex items-center gap-1 text-xs font-semibold text-white transition">
+          <i data-lucide="settings-2" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">設定・情報</span>
         </button>
       </div>
     </div>
   </header>
 
   <!-- Main Content -->
-  <main id="mainScroll" class="flex-1 max-w-2xl w-full mx-auto px-4 pt-4 overflow-hidden">
+  <main id="mainScroll" class="flex-1 max-w-2xl w-full mx-auto px-4 pt-3.5 pb-28 overflow-y-auto">
 
     <!-- ==================== HOME VIEW ==================== -->
-    <section id="view-home" class="space-y-5">
-      <!-- Sketch-faithful 3-point Timeline Hero -->
-      <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 px-3 py-5 sm:px-6 sm:py-7">
+    <section id="view-home" class="space-y-4">
+      <!-- 3-point Timeline Hero -->
+      <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 px-3 py-4 sm:px-6 sm:py-6">
         <!-- Today's Date & Ship Status Pill -->
-        <div class="flex flex-col items-center justify-center gap-2 mb-5">
+        <div class="flex flex-col items-center justify-center gap-2 mb-4">
           <div class="text-base sm:text-lg font-bold text-slate-500 tracking-wide">
-            今日：<span id="homeTodayDate" class="text-slate-900 font-extrabold">11月27日(金)</span>
+            今日：<span id="homeTodayDate" class="text-slate-900 font-extrabold">11月28日(土)</span>
           </div>
           <span id="shipStatusBadge" class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm sm:text-base font-bold bg-sky-50 text-sky-800 border border-sky-200/70">
             <span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
@@ -112,11 +106,11 @@
             <div class="mt-3 flex items-center gap-2">
               <span id="nextTypeBadge" class="px-6 py-2 rounded-full text-xl sm:text-2xl font-extrabold bg-sky-600 text-white shadow-sm">入港</span>
             </div>
-            <div id="nextCountdown" class="mt-2.5 text-base font-bold text-sky-700">あと1日</div>
+            <div id="nextCountdown" class="mt-2.5 text-base font-bold text-sky-700">本日</div>
 
             <!-- Time: Small when normal, Prominent when changed -->
             <div id="nextTimeContainer" class="mt-2">
-              <span id="nextTimeNormal" class="text-sm text-slate-400 font-medium">予定時刻 11:00</span>
+              <span id="nextTimeNormal" class="text-sm text-slate-400 font-medium">通常 11:00</span>
               <div id="nextTimeChanged" class="hidden mt-1 px-3 py-1 rounded-xl bg-rose-600 text-white text-sm font-extrabold shadow-sm animate-pulse">
                 <!-- Filled dynamically -->
               </div>
@@ -137,8 +131,8 @@
 
         </div>
 
-        <!-- Tourist Extra Info (Hidden in Islander Mode) -->
-        <div id="touristSubPanel" class="hidden mt-5 pt-4 border-t border-slate-100 text-xs text-slate-600 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+        <!-- Always-Visible Connection & Stay Panel (Previously toggled by Tourist button) -->
+        <div id="touristSubPanel" class="mt-4 pt-3.5 border-t border-slate-100 text-xs text-slate-600 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
           <span class="inline-flex items-center gap-1">
             <i data-lucide="anchor" class="w-3.5 h-3.5 text-sky-600"></i>
             東京(竹芝)発: <strong id="touristTokyoDep" class="text-slate-800">11/27(金) 11:00</strong>
@@ -148,17 +142,33 @@
             父島滞在: <strong id="touristStayNights" class="text-slate-800">3泊4日</strong>
           </span>
           <span class="inline-flex items-center gap-1">
-            <i data-lucide="navigation" class="w-3.5 h-3.5 text-sky-600"></i>
+            <i data-lucide="navigation" class="w-3.5 h-3.5 text-teal-600"></i>
             ははじま丸接続: <strong id="touristHahajimaConn" class="text-slate-800">11/28 12:00発</strong>
           </span>
         </div>
       </div>
 
-      <!-- Bottom Area: Intentionally Minimal — Only Emergency Changes Stand Out -->
+      <!-- Compact Operation Status Card (Slightly emphasized + includes Hahajima Maru status) -->
+      <div id="operationStatusBox" class="rounded-2xl bg-emerald-50/90 border border-emerald-300/90 px-4 py-3 shadow-xs space-y-2">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span id="ogaStatusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0"></span>
+            <span class="text-xs font-bold text-slate-600">おがさわら丸：</span>
+            <span id="ogaStatusMainText" class="text-sm font-extrabold text-emerald-950">現在予定通りの運航です</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-emerald-200/70">
+          <div class="flex items-center gap-2">
+            <span id="hahaStatusDot" class="w-2.5 h-2.5 rounded-full bg-teal-600 shrink-0"></span>
+            <span class="text-xs font-bold text-slate-600">ははじま丸：</span>
+            <span id="hahaStatusMainText" class="text-xs sm:text-sm font-bold text-teal-950">予定通り運航（公式確認中）</span>
+          </div>
+          <button type="button" data-goto="hahajima" class="text-[11px] font-bold text-teal-700 hover:underline shrink-0">詳細 →</button>
+        </div>
+      </div>
+
+      <!-- Bottom Area: Emergency Alert Card (Shown only when an emergency change is active) -->
       <div id="emergencyContainer">
-
-
-        <!-- Emergency Alert Card (Shown only when an emergency change is active) -->
         <div id="emergencyAlertCard" class="hidden rounded-2xl bg-rose-50 border-2 border-rose-300 p-4 shadow-sm">
           <div class="flex items-start gap-3">
             <div class="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 mt-0.5">
@@ -178,10 +188,11 @@
           </div>
         </div>
       </div>
+
       <p id="syncWarningNote" class="hidden text-center text-[11px] text-amber-700 font-medium pt-0.5">
         ※最新情報の取得を確認できていません（予定ダイヤを表示中）
       </p>
-      <p class="text-center text-xs text-slate-500 pt-1">
+      <p class="text-center text-xs text-slate-500 pt-0.5">
         ※非公式アプリです。最新の正確な運航情報は<a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="underline hover:text-slate-600">小笠原海運公式サイト</a>をご確認ください。
       </p>
     </section>
@@ -189,7 +200,7 @@
     <!-- ==================== CALENDAR VIEW ==================== -->
     <section id="view-calendar" class="hidden space-y-4">
       <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 p-4 sm:p-5">
-        <!-- Month Navigation & Startup Preference -->
+        <!-- Month Navigation -->
         <div class="flex items-center justify-between gap-2 mb-3">
           <button id="calPrevMonth" type="button" class="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition shrink-0">
             <i data-lucide="chevron-left" class="w-4 h-4 text-slate-700"></i>
@@ -198,12 +209,6 @@
           <button id="calNextMonth" type="button" class="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition shrink-0">
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-700"></i>
           </button>
-        </div>
-        <div class="flex justify-end mb-2">
-          <label class="inline-flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer select-none bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200/80">
-            <input id="defaultCalCheckbox" type="checkbox" class="rounded text-sky-600 focus:ring-sky-500" />
-            <span>起動時にカレンダーを開く</span>
-          </label>
         </div>
 
         <!-- Legend -->
@@ -237,21 +242,6 @@
       </div>
     </section>
 
-    <!-- ==================== CHANGES VIEW ==================== -->
-    <section id="view-changes" class="hidden space-y-4">
-      <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 p-4 sm:p-5">
-        <div class="flex items-center gap-2 mb-4">
-          <i data-lucide="bell-ring" class="w-4 h-4 text-sky-600"></i>
-          <h2 class="text-base font-bold text-slate-900">日時の変更・運航情報</h2>
-        </div>
-
-        <!-- Active Change Feed -->
-        <div id="changesFeed" class="space-y-3">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-    </section>
-
     <!-- ==================== HAHAJIMA MARU VIEW ==================== -->
     <section id="view-hahajima" class="hidden space-y-4">
       <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 p-4 sm:p-5">
@@ -273,6 +263,16 @@
           </select>
         </div>
 
+        <!-- Live Hahajima Status Banner -->
+        <div id="hahaLiveBanner" class="mb-3 rounded-2xl bg-teal-50/80 border border-teal-200 px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2">
+            <span id="hahaBannerDot" class="w-2 h-2 rounded-full bg-teal-600 shrink-0"></span>
+            <span class="font-bold text-teal-950">公式運航状況：</span>
+            <span id="hahaBannerText" class="font-extrabold text-teal-800">読み込み中...</span>
+          </div>
+          <a href="https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/" target="_blank" rel="noopener noreferrer" class="text-[11px] text-teal-700 underline shrink-0">公式確認</a>
+        </div>
+
         <!-- Quick Filter -->
         <div class="flex items-center gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
           <button type="button" data-haha-filter="all" class="haha-filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-teal-600 text-white shrink-0">すべて</button>
@@ -287,20 +287,61 @@
       </div>
     </section>
 
+    <!-- ==================== CHANGES VIEW ==================== -->
+    <section id="view-changes" class="hidden space-y-4">
+      <div class="bg-white rounded-3xl shadow-sm border border-sky-100/80 p-4 sm:p-5">
+        <div class="flex items-center gap-2 mb-4">
+          <i data-lucide="bell-ring" class="w-4 h-4 text-sky-600"></i>
+          <h2 class="text-base font-bold text-slate-900">日時の変更・運航情報</h2>
+        </div>
+
+        <!-- Active Change Feed -->
+        <div id="changesFeed" class="space-y-3">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
   </main>
 
-  <!-- Info / Terms / Contact / Past Data Modal (Unobtrusive secondary screen) -->
+  <!-- Settings / Info / Terms / Contact / Past Data Modal -->
   <div id="infoModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[85dvh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h2 class="text-base font-bold text-slate-900">アプリ情報</h2>
+        <h2 class="text-base font-bold text-slate-900">起動設定・アプリ情報</h2>
         <button id="closeInfoModalBtn" type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
       <div class="p-5 overflow-y-auto space-y-5 text-xs sm:text-sm text-slate-600">
+        <!-- Startup Screen Switch -->
+        <div class="space-y-2 bg-sky-50/70 border border-sky-200/80 rounded-2xl p-3.5">
+          <h3 class="font-bold text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="compass" class="w-4 h-4 text-sky-600"></i>
+            <span>起動時の初期表示画面</span>
+          </h3>
+          <p class="text-xs text-slate-500">アプリを開いたときに最初に表示する画面を選べます。</p>
+          <div class="grid grid-cols-3 gap-1.5 pt-1">
+            <button type="button" data-start-tab="home" class="start-tab-btn px-2 py-2 rounded-xl text-xs font-bold border transition text-center">ホーム</button>
+            <button type="button" data-start-tab="calendar" class="start-tab-btn px-2 py-2 rounded-xl text-xs font-bold border transition text-center">カレンダー</button>
+            <button type="button" data-start-tab="hahajima" class="start-tab-btn px-2 py-2 rounded-xl text-xs font-bold border transition text-center">ははじま丸</button>
+          </div>
+        </div>
+
+        <!-- Home Screen Install Guide -->
+        <div class="space-y-1.5 pt-1">
+          <h3 class="font-bold text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="smartphone" class="w-4 h-4 text-sky-600"></i>
+            <span>ホーム画面に追加してアプリのように使う</span>
+          </h3>
+          <ul class="text-xs leading-relaxed space-y-1 text-slate-600 list-disc pl-4">
+            <li><strong>iPhone (Safari)：</strong>画面下の共有ボタン（□に↑）→「ホーム画面に追加」</li>
+            <li><strong>Android (Chrome)：</strong>右上のメニュー（⋮）→「ホーム画面に追加」または「アプリをインストール」</li>
+          </ul>
+        </div>
+
         <!-- Terms & Privacy -->
-        <div class="space-y-1.5">
+        <div class="space-y-1.5 pt-3 border-t border-slate-100">
           <h3 class="font-bold text-slate-900">利用規約・免責事項</h3>
           <p class="text-xs leading-relaxed">
             本アプリは小笠原海運株式会社・伊豆諸島開発株式会社とは無関係の<strong>非公式アプリ</strong>です。表示される時刻・運航予定の正確性や最新性について保証するものではなく、利用によって生じた損害等について制作者は一切の責任を負いません。実際の乗船・貨物手配の際は、必ず<a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="text-sky-700 underline">小笠原海運公式サイト</a>等の公式情報をご確認ください。
@@ -313,7 +354,6 @@
         <!-- Contact (Google Form) -->
         <div class="space-y-2 pt-3 border-t border-slate-100">
           <h3 class="font-bold text-slate-900">お問い合わせ</h3>
-          <!-- Googleフォームを作成したら、下の href="#" をフォームのURLに書き換えてください -->
           <a id="contactFormLink" href="https://docs.google.com/forms/d/e/1FAIpQLSfQbqbQ9JbCTG1SSd1yB5g7732xjtpsbDQuo23dn16a4a6JTw/viewform" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition">
             <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
             <span>お問い合わせフォーム</span>
@@ -341,39 +381,33 @@
     最新の公式データを確認しました
   </div>
 
-  <!-- Bottom Navigation Bar (Raised one tier for comfortable thumb reach) -->
-  <nav class="fixed bottom-4 left-4 right-4 max-w-xl mx-auto bg-white/95 backdrop-blur border border-slate-200/90 rounded-2xl shadow-xl z-40">
-    <div class="grid grid-cols-4 py-2.5">
-      <button type="button" data-tab="home" class="nav-btn tab-active flex flex-col items-center justify-center gap-1 text-sm font-bold">
-        <i data-lucide="home" class="w-5 h-5"></i>
+  <!-- Bottom Navigation Bar (Enlarged touch targets + Swapped Hahajima & Changes order) -->
+  <nav class="fixed bottom-3 left-3 right-3 max-w-xl mx-auto bg-white/95 backdrop-blur border border-slate-200/90 rounded-2xl shadow-xl z-40">
+    <div class="grid grid-cols-4 py-3">
+      <button type="button" data-tab="home" class="nav-btn tab-active flex flex-col items-center justify-center gap-1.5 text-sm sm:text-base font-extrabold py-0.5">
+        <i data-lucide="home" class="w-6 h-6"></i>
         <span>ホーム</span>
       </button>
-      <button type="button" data-tab="calendar" class="nav-btn text-slate-400 flex flex-col items-center justify-center gap-1 text-sm font-bold hover:text-slate-600">
-        <i data-lucide="calendar-days" class="w-5 h-5"></i>
+      <button type="button" data-tab="calendar" class="nav-btn text-slate-400 flex flex-col items-center justify-center gap-1.5 text-sm sm:text-base font-extrabold hover:text-slate-600 py-0.5">
+        <i data-lucide="calendar-days" class="w-6 h-6"></i>
         <span>カレンダー</span>
       </button>
-      <button type="button" data-tab="changes" class="nav-btn text-slate-400 flex flex-col items-center justify-center gap-1 text-sm font-bold hover:text-slate-600 relative">
-        <i data-lucide="alert-circle" class="w-5 h-5"></i>
-        <span>日時の変更</span>
-        <span id="navChangeDot" class="hidden absolute top-2.5 right-6 w-2 h-2 rounded-full bg-rose-600"></span>
+      <button type="button" data-tab="hahajima" class="nav-btn text-slate-400 flex flex-col items-center justify-center gap-1.5 text-sm sm:text-base font-extrabold hover:text-slate-600 py-0.5">
+        <i data-lucide="ship" class="w-6 h-6"></i>
+        <span>はは丸</span>
       </button>
-      <button type="button" data-tab="hahajima" class="nav-btn text-slate-400 flex flex-col items-center justify-center gap-1 text-sm font-bold hover:text-slate-600">
-        <i data-lucide="ship" class="w-5 h-5"></i>
-        <span>ははじま丸</span>
+      <button type="button" data-tab="changes" class="nav-btn text-slate-400 flex flex-col items-center justify-center gap-1.5 text-sm sm:text-base font-extrabold hover:text-slate-600 relative py-0.5">
+        <i data-lucide="alert-circle" class="w-6 h-6"></i>
+        <span>日時の変更</span>
+        <span id="navChangeDot" class="hidden absolute top-2 right-5 w-2.5 h-2.5 rounded-full bg-rose-600"></span>
       </button>
     </div>
   </nav>
 
   <script>
     // =========================================================================
-    // 1. Official Schedule Data (Ogasawara Kaiun 2026-11 to 2027-02)
+    // 1. Official Schedule Data (Ogasawara Kaiun 2026-11 to 2027-05)
     // =========================================================================
-    // Each voyage represents one round trip:
-    // tokyoDep: 東京発 (11:00)
-    // chichiArr: 父島着 (11:00)
-    // stayDates: 父島泊 dates
-    // chichiDep: 父島発 (15:00)
-    // tokyoArr: 東京着 (15:00)
     const BASE_VOYAGES = [
       // 2026-11 (11/3, 11/10 は台風31号・32号による繰り上げ実績を反映)
       { id: '2026-11-01', tokyoDep: '2026-10-31', chichiArr: '2026-11-01', stayDates: ['2026-11-02'], chichiDep: '2026-11-03', tokyoArr: '2026-11-04', arrTime: '11:00', depTime: '15:00', depChanged: true },
@@ -412,13 +446,6 @@
       { id: '2027-05-01', tokyoDep: '2027-04-30', chichiArr: '2027-05-01', stayDates: ['2027-05-02', '2027-05-03'], chichiDep: '2027-05-04', tokyoArr: '2027-05-05', arrTime: '11:00', depTime: '15:00' }
     ];
 
-    // Hahajima Maru off-days / special days from official table (2026-11 to 2027-02)
-    // Pattern:
-    // - On Ogamaru arrival day: 12:00->14:00 (to Haha), no return
-    // - Day after arrival: no outbound, 14:00->16:00 (to Chichi)
-    // - On Ogamaru departure day: 7:30->9:30, 12:00->14:00
-    // - Regular operating day: 7:30->9:30, 14:00->16:00
-    // - Cancelled/rest days explicitly listed below:
     const HAHAJIMA_REST_DAYS = new Set([
       '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-11', '2026-11-12', '2026-11-18', '2026-11-24', '2026-11-26',
       '2026-12-02', '2026-12-03', '2026-12-09', '2026-12-15', '2026-12-21', '2026-12-27',
@@ -435,30 +462,11 @@
 
     const SCENARIOS = {
       none: null,
-      early_dep: {
-        id: 'early_dep',
-        targetDate: '2026-12-01',
-        type: 'dep',
-        newTime: '10:00',
-        oldTime: '15:00',
-        title: '12月1日(火) 父島出港時刻の繰り上げ',
-        desc: '台風接近に伴う海況悪化のため、12月1日(火)の父島出港時刻が通常の15:00から「10:00発」へ5時間繰り上げとなりました。乗船手続き・貨物搬入にご注意ください。',
-        updatedAt: '11/27 08:30 公式発表'
-      },
-      late_arr: {
-        id: 'late_arr',
-        targetDate: '2026-11-28',
-        type: 'arr',
-        newTime: '14:30',
-        oldTime: '11:00',
-        title: '11月28日(土) 父島入港時刻の遅延',
-        desc: '低気圧によるうねりのため、11月28日(土)の父島入港が通常の11:00から「14:30着」へ遅れる見込みです。ははじま丸の接続便も変更となる場合があります。',
-        updatedAt: '11/27 08:45 公式発表'
-      }
+      live: null
     };
 
     // =========================================================================
-    // 2. App State
+    // 2. App State & Dynamic JST Helpers
     // =========================================================================
     function getJstNow() {
       const now = new Date();
@@ -478,14 +486,17 @@
       return `${String(jst.getHours()).padStart(2, '0')}:${String(jst.getMinutes()).padStart(2, '0')}`;
     }
 
+    function getJstHour() {
+      return getJstNow().getHours();
+    }
+
     const INITIAL_TODAY = getTodayStr();
     const [initY, initM] = INITIAL_TODAY.split('-').map(Number);
 
     const state = {
       tab: 'home',
-      mode: 'islander', // 'islander' | 'tourist'
       simDate: INITIAL_TODAY,
-      scenario: 'none', // 'none' | 'live'
+      scenario: 'none',
       calYear: (initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 4) ? initY : 2026,
       calMonth: (initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 4) ? initM : 11,
       selectedDate: INITIAL_TODAY,
@@ -493,6 +504,18 @@
       hahaFilter: 'all',
       liveData: null
     };
+
+    // Refresh current JST date dynamically (prevents midnight rollover freeze)
+    function refreshCurrentDate() {
+      const freshToday = getTodayStr();
+      if (state.simDate !== freshToday) {
+        const wasOnToday = state.selectedDate === state.simDate;
+        state.simDate = freshToday;
+        if (wasOnToday) {
+          state.selectedDate = freshToday;
+        }
+      }
+    }
 
     // =========================================================================
     // 3. Date & Schedule Helpers
@@ -519,14 +542,32 @@
       return Math.round((b - a) / (1000 * 60 * 60 * 24));
     }
 
-    function getEventsList() {
+    function getActiveOverridesMap() {
+      // Combine persisted overrides from JSON + active live override
+      const map = {};
+      if (state.liveData && Array.isArray(state.liveData.persisted_overrides)) {
+        for (const item of state.liveData.persisted_overrides) {
+          if (item && item.target_date && item.type && item.new_time) {
+            map[`${item.target_date}_${item.type}`] = item.new_time;
+          }
+        }
+      }
       const activeChange = SCENARIOS[state.scenario];
+      if (activeChange && activeChange.targetDate && activeChange.type && activeChange.newTime) {
+        map[`${activeChange.targetDate}_${activeChange.type}`] = activeChange.newTime;
+      }
+      return map;
+    }
+
+    function getEventsList() {
+      const overrides = getActiveOverridesMap();
       const events = [];
       for (const v of BASE_VOYAGES) {
         let arrTime = v.arrTime;
         let arrChanged = false;
-        if (activeChange && activeChange.targetDate === v.chichiArr && activeChange.type === 'arr') {
-          arrTime = activeChange.newTime;
+        const ovArr = overrides[`${v.chichiArr}_arr`];
+        if (ovArr) {
+          arrTime = ovArr;
           arrChanged = true;
         }
         events.push({
@@ -540,8 +581,9 @@
 
         let depTime = v.depTime;
         let depChanged = Boolean(v.depChanged);
-        if (activeChange && activeChange.targetDate === v.chichiDep && activeChange.type === 'dep') {
-          depTime = activeChange.newTime;
+        const ovDep = overrides[`${v.chichiDep}_dep`];
+        if (ovDep) {
+          depTime = ovDep;
           depChanged = true;
         }
         events.push({
@@ -553,17 +595,17 @@
           voyage: v
         });
       }
-      events.sort((a, b) => a.date.localeCompare(b.date));
+      events.sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
       return events;
     }
 
     function getDayInfo(dateStr) {
-      const activeChange = SCENARIOS[state.scenario];
+      const overrides = getActiveOverridesMap();
       let ogamaru = { role: 'none', label: '', time: '', isChanged: false, voyage: null };
       for (const v of BASE_VOYAGES) {
         if (v.chichiArr === dateStr) {
-          const isChg = activeChange && activeChange.targetDate === dateStr && activeChange.type === 'arr';
-          ogamaru = { role: 'arr', label: '父島入港', time: isChg ? activeChange.newTime : v.arrTime, isChanged: isChg, voyage: v };
+          const ovArr = overrides[`${dateStr}_arr`];
+          ogamaru = { role: 'arr', label: '父島入港', time: ovArr || v.arrTime, isChanged: Boolean(ovArr), voyage: v };
           break;
         }
         if (v.stayDates.includes(dateStr)) {
@@ -571,8 +613,8 @@
           break;
         }
         if (v.chichiDep === dateStr) {
-          const isChg = activeChange && activeChange.targetDate === dateStr && activeChange.type === 'dep';
-          ogamaru = { role: 'dep', label: '父島出港', time: isChg ? activeChange.newTime : v.depTime, isChanged: isChg || Boolean(v.depChanged), voyage: v };
+          const ovDep = overrides[`${dateStr}_dep`];
+          ogamaru = { role: 'dep', label: '父島出港', time: ovDep || v.depTime, isChanged: Boolean(ovDep) || Boolean(v.depChanged), voyage: v };
           break;
         }
         if (v.tokyoDep === dateStr) {
@@ -591,7 +633,6 @@
       } else if (ogamaru.role === 'dep') {
         haha = { status: 'dep_conn', out: '7:30 → 9:30', back: '12:00 → 14:00', note: 'おが丸出港日' };
       } else {
-        // Check if yesterday was arrival day (first stay day)
         const d = parseDate(dateStr);
         d.setDate(d.getDate() - 1);
         const prevStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -606,10 +647,10 @@
 
     function getShipStatus(dateStr) {
       const nowTime = getJstTimeStr();
-      const activeChange = SCENARIOS[state.scenario];
+      const overrides = getActiveOverridesMap();
       for (const v of BASE_VOYAGES) {
-        const arrT = (activeChange && activeChange.targetDate === v.chichiArr && activeChange.type === 'arr' && activeChange.newTime) ? activeChange.newTime : v.arrTime;
-        const depT = (activeChange && activeChange.targetDate === v.chichiDep && activeChange.type === 'dep' && activeChange.newTime) ? activeChange.newTime : v.depTime;
+        const arrT = overrides[`${v.chichiArr}_arr`] || v.arrTime;
+        const depT = overrides[`${v.chichiDep}_dep`] || v.depTime;
 
         if (v.tokyoDep === dateStr) {
           return nowTime < '11:00' ? '東京（竹芝）停泊中（本日出港）' : '航海中（東京 → 父島）';
@@ -631,12 +672,73 @@
     // =========================================================================
     // 4. Render Functions
     // =========================================================================
+    function renderOperationStatus() {
+      const box = document.getElementById('operationStatusBox');
+      const ogaDot = document.getElementById('ogaStatusDot');
+      const ogaText = document.getElementById('ogaStatusMainText');
+      const hahaDot = document.getElementById('hahaStatusDot');
+      const hahaText = document.getElementById('hahaStatusMainText');
+      const hahaBannerText = document.getElementById('hahaBannerText');
+      const hahaBannerDot = document.getElementById('hahaBannerDot');
+
+      const activeChange = SCENARIOS[state.scenario];
+      const hasOgaAlert = Boolean(activeChange);
+
+      // Hahajima live status from JSON (Fail-safe: default to 確認不能 if missing)
+      const hahaStatusObj = state.liveData && state.liveData.hahajima_status;
+      const hahaStatusStr = hahaStatusObj && hahaStatusObj.status ? hahaStatusObj.status : '確認不能';
+
+      const isHahaNormal = hahaStatusStr === '通常運航';
+      const isHahaAlert = hahaStatusStr.includes('欠航') || hahaStatusStr.includes('変更') || hahaStatusStr.includes('条件付');
+
+      if (hasOgaAlert || isHahaAlert) {
+        box.className = 'rounded-2xl bg-rose-50/90 border border-rose-300 px-4 py-3 shadow-xs space-y-2';
+      } else if (!isHahaNormal) {
+        box.className = 'rounded-2xl bg-amber-50/80 border border-amber-300/80 px-4 py-3 shadow-xs space-y-2';
+      } else {
+        box.className = 'rounded-2xl bg-emerald-50/90 border border-emerald-300/90 px-4 py-3 shadow-xs space-y-2';
+      }
+
+      if (hasOgaAlert) {
+        ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 animate-pulse';
+        ogaText.textContent = '運航変更・お知らせあり';
+        ogaText.className = 'text-sm font-extrabold text-rose-900';
+      } else {
+        ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0';
+        ogaText.textContent = '現在予定通りの運航です';
+        ogaText.className = 'text-sm font-extrabold text-emerald-950';
+      }
+
+      if (isHahaNormal) {
+        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-teal-600 shrink-0';
+        hahaText.textContent = '通常運航（予定通り）';
+        hahaText.className = 'text-xs sm:text-sm font-extrabold text-teal-950';
+        if (hahaBannerText) hahaBannerText.textContent = '通常運航';
+        if (hahaBannerDot) hahaBannerDot.className = 'w-2 h-2 rounded-full bg-teal-600 shrink-0';
+      } else if (isHahaAlert) {
+        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 animate-pulse';
+        hahaText.textContent = hahaStatusStr;
+        hahaText.className = 'text-xs sm:text-sm font-extrabold text-rose-800';
+        if (hahaBannerText) hahaBannerText.textContent = hahaStatusStr;
+        if (hahaBannerDot) hahaBannerDot.className = 'w-2 h-2 rounded-full bg-rose-600 shrink-0 animate-pulse';
+      } else {
+        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0';
+        hahaText.textContent = '確認不能（公式サイト要確認）';
+        hahaText.className = 'text-xs sm:text-sm font-bold text-amber-900';
+        if (hahaBannerText) hahaBannerText.textContent = '確認不能（公式サイトをご確認ください）';
+        if (hahaBannerDot) hahaBannerDot.className = 'w-2 h-2 rounded-full bg-amber-500 shrink-0';
+      }
+    }
+
     function renderHome() {
+      refreshCurrentDate();
       const events = getEventsList();
       const today = state.simDate;
+      const nowTime = getJstTimeStr();
+      const nowDateTime = `${today} ${nowTime}`;
 
-      // Find next event (>= today)
-      let nextIdx = events.findIndex(e => e.date >= today);
+      // Find next event using BOTH date and time (so passed arrivals/departures switch immediately)
+      let nextIdx = events.findIndex(e => `${e.date} ${e.time}` > nowDateTime);
       if (nextIdx === -1) nextIdx = events.length - 1;
       const prevEvt = nextIdx > 0 ? events[nextIdx - 1] : null;
       const nextEvt = events[nextIdx];
@@ -670,8 +772,8 @@
       const daysDiff = diffDays(today, nextEvt.date);
       const cdEl = document.getElementById('nextCountdown');
       if (daysDiff === 0) {
-        cdEl.textContent = '本日！';
-        cdEl.className = 'mt-2.5 text-base font-extrabold text-rose-600';
+        cdEl.textContent = '本日';
+        cdEl.className = 'mt-2.5 text-base font-extrabold text-sky-800';
       } else if (daysDiff === 1) {
         cdEl.textContent = '明日（あと1日）';
         cdEl.className = 'mt-2.5 text-base font-bold text-sky-700';
@@ -680,7 +782,7 @@
         cdEl.className = 'mt-2.5 text-base font-bold text-sky-700';
       }
 
-      // Time emphasis rule: small when normal, prominent when different!
+      // Time emphasis rule
       const normalTimeEl = document.getElementById('nextTimeNormal');
       const changedTimeEl = document.getElementById('nextTimeChanged');
       if (nextEvt.isChanged) {
@@ -715,44 +817,34 @@
         }
       }
 
-      // Tourist mode panel
-      const touristPanel = document.getElementById('touristSubPanel');
-      if (state.mode === 'tourist') {
-        touristPanel.classList.remove('hidden');
-        const v = nextEvt.voyage;
-        document.getElementById('touristTokyoDep').textContent = `${fmtDateShort(v.tokyoDep)}${fmtWeekday(v.tokyoDep)} 11:00`;
-        document.getElementById('touristStayNights').textContent = `${v.stayDates.length + 1}泊${v.stayDates.length + 2}日`;
-        const arrHaha = getDayInfo(v.chichiArr).haha;
-        document.getElementById('touristHahajimaConn').textContent = arrHaha.out ? `${fmtDateShort(v.chichiArr)} ${arrHaha.out.split(' ')[0]}発` : '運休';
-      } else {
-        touristPanel.classList.add('hidden');
-      }
+      // Always-visible Connection & Stay Info
+      const v = nextEvt.voyage;
+      document.getElementById('touristTokyoDep').textContent = `${fmtDateShort(v.tokyoDep)}${fmtWeekday(v.tokyoDep)} 11:00`;
+      document.getElementById('touristStayNights').textContent = `${v.stayDates.length + 1}泊${v.stayDates.length + 2}日`;
+      const arrHaha = getDayInfo(v.chichiArr).haha;
+      document.getElementById('touristHahajimaConn').textContent = arrHaha.out ? `${fmtDateShort(v.chichiArr)} ${arrHaha.out.split(' ')[0]}発` : '運休';
+
+      renderOperationStatus();
 
       // Emergency Alert Area
       const activeChange = SCENARIOS[state.scenario];
       const alertCard = document.getElementById('emergencyAlertCard');
       const navDot = document.getElementById('navChangeDot');
 
-      const mainEl = document.getElementById('mainScroll');
       if (activeChange) {
         alertCard.classList.remove('hidden');
         navDot.classList.remove('hidden');
         document.getElementById('emergencyTitle').textContent = activeChange.title;
         document.getElementById('emergencyDesc').textContent = activeChange.desc;
         document.getElementById('emergencyUpdatedAt').textContent = activeChange.updatedAt;
-        if (state.tab === 'home') {
-          mainEl.className = 'flex-1 max-w-2xl w-full mx-auto px-4 pt-3 pb-24 overflow-y-auto';
-        }
       } else {
         alertCard.classList.add('hidden');
         navDot.classList.add('hidden');
-        if (state.tab === 'home') {
-          mainEl.className = 'flex-1 max-w-2xl w-full mx-auto px-4 pt-4 overflow-y-auto';
-        }
       }
     }
 
     function renderCalendar() {
+      refreshCurrentDate();
       const y = state.calYear;
       const m = state.calMonth;
       document.getElementById('calMonthTitle').textContent = `${y}年 ${m}月`;
@@ -814,15 +906,12 @@
         grid.appendChild(btn);
       }
 
-      // Leading days from previous month
       for (let i = firstDay; i > 0; i--) {
         appendCalCell(new Date(y, m - 1, 1 - i), true);
       }
-      // Days in current month
       for (let day = 1; day <= daysInMonth; day++) {
         appendCalCell(new Date(y, m - 1, day), false);
       }
-      // Trailing days from next month to fill the week row
       const totalCells = firstDay + daysInMonth;
       const trailing = (7 - (totalCells % 7)) % 7;
       for (let i = 1; i <= trailing; i++) {
@@ -880,16 +969,6 @@
     }
 
     function renderChanges() {
-      // Highlight active scenario button
-      document.querySelectorAll('.scenario-btn').forEach(btn => {
-        const sc = btn.dataset.scenario;
-        if (sc === state.scenario) {
-          btn.className = 'scenario-btn text-left px-3.5 py-2.5 rounded-2xl border-2 border-sky-600 bg-sky-50/60 text-xs font-semibold transition flex items-center justify-between';
-        } else {
-          btn.className = 'scenario-btn text-left px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold transition flex items-center justify-between';
-        }
-      });
-
       const feed = document.getElementById('changesFeed');
       const activeChange = SCENARIOS[state.scenario];
 
@@ -917,19 +996,36 @@
         `;
       }
 
-
+      // Recent official notices / blog feed if available
+      if (state.liveData && Array.isArray(state.liveData.recent_info) && state.liveData.recent_info.length > 0) {
+        const listItems = state.liveData.recent_info.slice(0, 6).map(item => `
+          <a href="${item.url || 'https://www.ogasawarakaiun.co.jp/info/'}" target="_blank" rel="noopener noreferrer" class="block p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold text-slate-800 line-clamp-2">${item.title}</span>
+              ${item.is_alert ? '<span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 text-[10px] font-bold shrink-0">要確認</span>' : ''}
+            </div>
+          </a>
+        `).join('');
+        html += `
+          <div class="pt-2 space-y-2">
+            <h3 class="text-xs font-bold text-slate-500">公式お知らせ・ブログ最新一覧</h3>
+            ${listItems}
+          </div>
+        `;
+      }
 
       feed.innerHTML = html;
       lucide.createIcons();
     }
 
     function renderHahajima() {
+      refreshCurrentDate();
+      renderOperationStatus();
       const [y, m] = state.hahaMonth.split('-').map(Number);
       const daysInMonth = new Date(y, m, 0).getDate();
       const list = document.getElementById('hahajimaList');
       list.innerHTML = '';
 
-      // Update filter buttons
       document.querySelectorAll('.haha-filter-btn').forEach(btn => {
         if (btn.dataset.hahaFilter === state.hahaFilter) {
           btn.className = 'haha-filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-teal-600 text-white shrink-0';
@@ -985,9 +1081,10 @@
       }
     }
 
-    const TAB_ORDER = ['home', 'calendar', 'changes', 'hahajima'];
+    const TAB_ORDER = ['home', 'calendar', 'hahajima', 'changes'];
 
     function switchTab(tabName) {
+      if (!TAB_ORDER.includes(tabName)) tabName = 'home';
       state.tab = tabName;
       TAB_ORDER.forEach(t => {
         document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tabName);
@@ -998,17 +1095,11 @@
         btn.classList.toggle('text-slate-400', !active);
       });
       const mainEl = document.getElementById('mainScroll');
-      if (tabName === 'home') {
-        mainEl.className = state.scenario !== 'none'
-          ? 'flex-1 max-w-2xl w-full mx-auto px-4 pt-3 pb-24 overflow-y-auto'
-          : 'flex-1 max-w-2xl w-full mx-auto px-4 pt-4 overflow-y-auto';
-      } else {
-        mainEl.className = 'flex-1 max-w-2xl w-full mx-auto px-4 pt-4 pb-24 overflow-y-auto';
-        mainEl.scrollTop = 0;
-      }
+      mainEl.scrollTop = 0;
+      if (tabName === 'home') renderHome();
       if (tabName === 'calendar') renderCalendar();
-      if (tabName === 'changes') renderChanges();
       if (tabName === 'hahajima') renderHahajima();
+      if (tabName === 'changes') renderChanges();
     }
 
     // Horizontal swipe navigation between tabs
@@ -1052,21 +1143,8 @@
       btn.addEventListener('click', () => switchTab(btn.dataset.goto));
     });
 
-    document.getElementById('modeIslanderBtn').addEventListener('click', () => {
-      state.mode = 'islander';
-      document.getElementById('modeIslanderBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition bg-white text-sky-900 shadow-sm';
-      document.getElementById('modeTouristBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition text-white/95 hover:text-white';
-      renderHome();
-    });
-
-    document.getElementById('modeTouristBtn').addEventListener('click', () => {
-      state.mode = 'tourist';
-      document.getElementById('modeTouristBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition bg-white text-sky-900 shadow-sm';
-      document.getElementById('modeIslanderBtn').className = 'px-3 py-1 rounded-full text-xs font-semibold transition text-white/95 hover:text-white';
-      renderHome();
-    });
-
     async function syncScheduleData() {
+      refreshCurrentDate();
       const warnEl = document.getElementById('syncWarningNote');
       try {
         const resp = await fetch(`./schedule_data.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -1074,17 +1152,19 @@
         const data = await resp.json();
         state.liveData = data;
 
-        // Freshness check (warn if older than 24 hours)
+        // Freshness check: daytime (06:00-21:00 JST) warns after 1 hour; nighttime skips stale alert
         let isStale = false;
-        if (data.updated_iso) {
-          const ageHours = (Date.now() - Date.parse(data.updated_iso)) / (1000 * 60 * 60);
-          if (!Number.isNaN(ageHours) && ageHours > 24) {
+        const jstHour = getJstHour();
+        const isDaytime = jstHour >= 6 && jstHour < 21;
+        if (data.updated_iso && isDaytime) {
+          const ageMinutes = (Date.now() - Date.parse(data.updated_iso)) / (1000 * 60);
+          if (!Number.isNaN(ageMinutes) && ageMinutes > 65) {
             isStale = true;
           }
         }
         if (warnEl) {
           if (isStale) {
-            warnEl.textContent = `※公式データの更新が24時間以上前（${data.updated_at || ''}）です`;
+            warnEl.textContent = `※日中1時間以上更新が確認できていません（最終確認: ${data.updated_at || ''}）`;
             warnEl.classList.remove('hidden');
           } else {
             warnEl.classList.add('hidden');
@@ -1109,16 +1189,17 @@
           state.scenario = 'none';
         }
         renderHome();
+        if (state.tab === 'calendar') renderCalendar();
+        if (state.tab === 'hahajima') renderHahajima();
         if (state.tab === 'changes') renderChanges();
       } catch (err) {
         if (warnEl) {
           warnEl.textContent = '※最新情報の取得を確認できていません（予定ダイヤを表示中）';
           warnEl.classList.remove('hidden');
         }
+        renderOperationStatus();
       }
     }
-
-
 
     document.getElementById('calPrevMonth').addEventListener('click', () => {
       if (state.calYear === 2026 && state.calMonth === 11) return;
@@ -1133,8 +1214,6 @@
       if (state.calMonth > 12) { state.calMonth = 1; state.calYear++; }
       renderCalendar();
     });
-
-
 
     document.getElementById('hahaMonthSelect').addEventListener('change', (e) => {
       state.hahaMonth = e.target.value;
@@ -1192,7 +1271,33 @@
       }).join('');
     }
 
+    function updateStartTabButtons() {
+      let currentStart = 'home';
+      try {
+        currentStart = localStorage.getItem('ogamaru_start_tab') || 'home';
+      } catch (e) {}
+      document.querySelectorAll('.start-tab-btn').forEach(btn => {
+        const isSelected = btn.dataset.startTab === currentStart;
+        btn.className = isSelected
+          ? 'start-tab-btn px-2 py-2 rounded-xl text-xs font-extrabold border-2 border-sky-600 bg-sky-600 text-white transition text-center shadow-xs'
+          : 'start-tab-btn px-2 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition text-center';
+      });
+    }
+
+    document.querySelectorAll('.start-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const chosen = btn.dataset.startTab;
+        try {
+          localStorage.setItem('ogamaru_start_tab', chosen);
+        } catch (e) {}
+        updateStartTabButtons();
+        const labels = { home: 'ホーム画面', calendar: 'カレンダー', hahajima: 'ははじま丸' };
+        showToast(`次回から「${labels[chosen] || 'ホーム画面'}」を最初に開きます`);
+      });
+    });
+
     document.getElementById('openInfoModalBtn').addEventListener('click', () => {
+      updateStartTabButtons();
       renderArchiveTable();
       document.getElementById('infoModal').classList.remove('hidden');
       lucide.createIcons();
@@ -1211,32 +1316,21 @@
       }
     });
 
-
-
-    const defaultCalCheckbox = document.getElementById('defaultCalCheckbox');
-    try {
-      const savedStartTab = localStorage.getItem('ogamaru_start_tab');
-      if (savedStartTab === 'calendar') {
-        defaultCalCheckbox.checked = true;
-      }
-    } catch (e) {}
-
-    defaultCalCheckbox.addEventListener('change', (e) => {
-      try {
-        localStorage.setItem('ogamaru_start_tab', e.target.checked ? 'calendar' : 'home');
-      } catch (err) {}
-      showToast(e.target.checked ? '次回からカレンダーを最初に開きます' : '次回からホーム画面を最初に開きます');
-    });
-
     // Init
     lucide.createIcons();
     renderHome();
     try {
-      if (localStorage.getItem('ogamaru_start_tab') === 'calendar') {
-        switchTab('calendar');
+      const savedStartTab = localStorage.getItem('ogamaru_start_tab');
+      if (savedStartTab && TAB_ORDER.includes(savedStartTab)) {
+        switchTab(savedStartTab);
       }
     } catch (e) {}
     syncScheduleData();
+    // Refresh clock & schedule every 1 minute for date rollover, and sync JSON every 10 minutes
+    setInterval(() => {
+      refreshCurrentDate();
+      if (state.tab === 'home') renderHome();
+    }, 60 * 1000);
     setInterval(syncScheduleData, 10 * 60 * 1000);
   </script>
   <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "94dbcfccfff8472db558f47fd0a95aea"}'></script><!-- End Cloudflare Web Analytics -->

@@ -1,0 +1,18 @@
+{
+  "name": "おが丸・はは丸 入出港カレンダー",
+  "short_name": "おが丸・はは丸",
+  "description": "小笠原諸島（おがさわら丸・ははじま丸）の入出港予定・運航状況確認カレンダー（非公式）",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f8fb",
+  "theme_color": "#0369a1",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
