@@ -1,8 +1,46 @@
 {
-  "updated_at": "2026-11-28 14:43 JST",
-  "updated_iso": "2026-11-28T14:43:17.258841+09:00",
+  "schema_version": 2,
+  "cancellations": [],
+  "updated_at": "2026-11-28 15:35 JST",
+  "updated_iso": "2026-11-28T15:35:47.802898+09:00",
   "next_summary": "次のおがさわら丸の運航は、11/27(金) 東京 11時00分発、12/1(火) 父島 15時00分発 の予定です。ご乗船をお待ちしております。",
-  "alerts": [],
+  "alerts": [
+    {
+      "title": "台風32号によるおがさわら丸、ははじま丸の運航変更において",
+      "url": "http://blog.livedoor.jp/ogasawarakaiun/archives/1083860732.html",
+      "is_alert": true,
+      "matched_keywords": [
+        "変更",
+        "台風"
+      ]
+    },
+    {
+      "title": "おがさわら丸は11月３日父島発に変更になります",
+      "url": "http://blog.livedoor.jp/ogasawarakaiun/archives/1083858255.html",
+      "is_alert": true,
+      "matched_keywords": [
+        "変更",
+        "台風"
+      ]
+    },
+    {
+      "title": "11/3-4のははじま丸の運航について",
+      "url": "http://blog.livedoor.jp/ogasawarakaiun/archives/1083858021.html",
+      "is_alert": true,
+      "matched_keywords": [
+        "変更",
+        "台風"
+      ]
+    },
+    {
+      "title": "10月29日ははじま丸の母島発時刻変更について",
+      "url": "http://blog.livedoor.jp/ogasawarakaiun/archives/1083857129.html",
+      "is_alert": true,
+      "matched_keywords": [
+        "変更"
+      ]
+    }
+  ],
   "recent_info": [
     {
       "title": "1便（2026.12.22発）限定プラン！謝恩ツアー小笠原５泊６日",
@@ -63,6 +101,47 @@
       "url": "https://www.ogasawarakaiun.co.jp/info/?p=12748",
       "is_alert": false,
       "matched_keywords": []
+    },
+    {
+      "title": "11月24日～27日は休業となります（父島営業所）",
+      "url": "http://blog.livedoor.jp/ogasawarakaiun/archives/1083864970.html",
+      "is_alert": false,
+      "matched_keywords": []
+    },
+    {
+      "title": "台風32号によるおがさわら丸、ははじま丸の運航変更において",
+      "url": "http://blog.livedoor.jp/ogasawarakaiun/archives/1083860732.html",
+      "is_alert": true,
+      "matched_keywords": [
+        "変更",
+        "台風"
+      ]
+    },
+    {
+      "title": "おがさわら丸は11月３日父島発に変更になります",
+      "url": "http://blog.livedoor.jp/ogasawarakaiun/archives/1083858255.html",
+      "is_alert": true,
+      "matched_keywords": [
+        "変更",
+        "台風"
+      ]
+    },
+    {
+      "title": "11/3-4のははじま丸の運航について",
+      "url": "http://blog.livedoor.jp/ogasawarakaiun/archives/1083858021.html",
+      "is_alert": true,
+      "matched_keywords": [
+        "変更",
+        "台風"
+      ]
+    },
+    {
+      "title": "10月29日ははじま丸の母島発時刻変更について",
+      "url": "http://blog.livedoor.jp/ogasawarakaiun/archives/1083857129.html",
+      "is_alert": true,
+      "matched_keywords": [
+        "変更"
+      ]
     }
   ],
   "hahajima_status": {
@@ -71,12 +150,18 @@
     "source_url": "https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/"
   },
   "parsed_override": null,
-  "persisted_overrides": [],
+  "persisted_overrides": [
+    {
+      "target_date": "2026-12-01",
+      "type": "dep",
+      "new_time": "15:00"
+    }
+  ],
   "source_status": {
     "ogamaru_next": "ok",
     "ogamaru_info": "ok",
     "hahajima_status": "ok",
-    "ogamaru_blog_feed": "ogamaru_blog_feed_http: no_entry_elements_found (root_tag={http://purl.org/atom/ns#}feed)"
+    "ogamaru_blog_feed": "ogamaru_blog_feed_http: ok (5 items)"
   },
   "sources": {
     "ogamaru_info": "https://www.ogasawarakaiun.co.jp/info/",
@@ -88,5 +173,5 @@
     "hahajima_service": "https://www.ogasawarakaiun.co.jp/service/hahajima.html",
     "hahajima_status": "https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/"
   },
-  "fingerprint": "7355911f5ead181e585e12f479429092f1e8fdb794a46508bc06b77a1fcd163e"
+  "fingerprint": "b7802b07c926eb115787ed96af5f2abbc1644fd067caa52631084f43f4f8d2c7"
 }
