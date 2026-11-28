@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-おがさわら丸・ははじま丸 公式情報自動取得 & 通知スクリプト (Ver.1.5.1)
+おがさわら丸・ははじま丸 公式情報自動取得 & 通知スクリプト (Ver.1.6)
 ----------------------------------------------------------------
-修正内容 (Ver.1.5.1):
-- 全角括弧「（）」を区切り文字から除外し、「条件付就航（海上不良のため）」のような
-  括弧付き補足文が途中で切れないよう正規表現を修正
+修正内容 (Ver.1.6):
+- 東京宝島うみそら便の実ページ文字列
+  「母島 沖港 [運航] [運航] [その他情報あり] ※運航状況が「[条件付運航]」の場合：…」
+  を正確に解析するよう全面改修:
+  1. 「※運航状況が「...」の場合：」以降の定型注釈を完全にカット
+  2. 画像altタグ（[運航] / [条件付運航] / [欠航] / [その他情報あり] 等）を構造的に判定
+     - 全ての運航アイコンが [運航] で欠航・条件付アイコンが無ければ「通常運航」と判定
+       （「[その他情報あり]」や注釈文の「[条件付運航]」に惑わされない）
+     - 実際に欠航・条件付・時間変更アイコンがある場合は、備考欄の端的な本文のみを抽出
 """
 
 import argparse
@@ -43,7 +49,7 @@ ALERT_KEYWORDS = [
 
 OUTPUT_JSON = Path("schedule_data.json")
 HISTORY_CSV = Path("schedule_history.csv")
-USER_AGENT = "Mozilla/5.0 (compatible; OgamaruScheduleBot/1.5; +https://ogasawara-app.github.io/)"
+USER_AGENT = "Mozilla/5.0 (compatible; OgamaruScheduleBot/1.6; +https://ogasawara-app.github.io/)"
 
 
 def fetch_html(url: str, timeout: int = 15) -> str:
@@ -141,42 +147,37 @@ def parse_ogamaru_blog_atom(xml_text: str) -> Tuple[List[Dict[str, Any]], Option
     return items, None
 
 
-def strip_umisora_legends(text: str) -> str:
+def strip_umisora_boilerplate(text: str) -> str:
     """
-    東京宝島うみそら便の各便ブロック内に繰り返し表示される凡例リストを除去する。
+    東京宝島うみそら便のページ内の定型注釈・凡例・連絡先を完全に除去する。
     """
-    patterns = [
+    # 1. Cut off explanatory notes ("※運航状況が「...」の場合：..." etc.)
+    cleaned = re.split(
+        r"(?:※\s*運航状況が|【運航状況のご案内について】|本ページの情報に基づく|大型客船は|☏|TEL|電話|受付時間|お問い合わせ)",
+        text,
+    )[0]
+
+    # 2. Remove repeated legend strings
+    legend_patterns = [
         r"\[?\s*条件付就航\s*[・･]\s*時間変更\s*[・･]\s*ダイヤ変更\s*[・･]\s*その他情報あり\s*\]?",
         r"\[?\s*条件付就航\s*[・･]\s*その他情報あり\s*\]?",
         r"\[?\s*欠航\s*[・･]\s*運休\s*\]?",
         r"\[?\s*運航\s*\(\s*予定\s*\)\s*\]?",
         r"\[?\s*ー\s*本日の運航なし\s*\]?",
     ]
-    cleaned = text
-    for pat in patterns:
+    for pat in legend_patterns:
         cleaned = re.sub(pat, " ", cleaned)
+
     return re.sub(r"\s+", " ", cleaned).strip()
-
-
-def extract_concise_hahajima_detail(target_text: str) -> str:
-    """
-    うみそら便の「(ははじま丸)」周辺テキストから、余計な電話番号や受付時間を除き、
-    具体的な運航変更・欠航・条件の内容だけを端的に抜き出す。
-    """
-    cleaned = re.split(r"(?:☏|TEL|電話|受付時間|【運航状況のご案内について】|お問い合わせ)", target_text)[0]
-    cleaned = re.sub(r"[・･\*]+", " ", cleaned)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    if len(cleaned) > 48:
-        cleaned = cleaned[:47].rstrip() + "…"
-    return cleaned
 
 
 def parse_hahajima_status(html: str) -> Dict[str, str]:
     """
-    東京宝島うみそら便（母島）のステータスと端的な変更内容を抽出する。
-    ・通常時は status="通常運航", is_alert="false"
-    ・変更/欠航/条件付がある場合は status に端的な具体内容（例:「条件付就航（海上不良のため）」）をそのまま返す
-    ・判定不能時は status="確認不能"
+    東京宝島うみそら便（母島）のステータスと端的な変更内容を抽出する (Ver.1.6)。
+    - 画像altタグ（[運航] / [欠航] / [条件付運航] / [時間変更] / [その他情報あり] 等）と本文を分離して判定
+    - 「※運航状況が「[条件付運航]」の場合：…」のような定型説明文は完全に除外
+    - 「[その他情報あり]」が付いていても実際の便ステータスがすべて「[運航]」なら「通常運航」を返す
+    - 実際に欠航・条件付・時間変更がある場合は、装飾タグを除いた端的な内容だけを返す
     """
     if not html or not html.strip():
         return {"status": "確認不能", "is_alert": "false", "reason": "empty_html", "source_url": SOURCES["hahajima_status"]}
@@ -191,40 +192,58 @@ def parse_hahajima_status(html: str) -> Dict[str, str]:
             img.replace_with(f" [{alt}] ")
 
     raw_text = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
-    text = strip_umisora_legends(raw_text)
 
-    ship_blocks = re.findall(r"[（(]ははじま丸[）)]\s*(.+?)(?=【|[（(][^）)]+丸[）)]|☏|TEL|受付時間|$)", text)
+    # Isolate "(ははじま丸)" block if present, otherwise "【母島】/母島 沖港" block
+    ship_blocks = re.findall(r"[（(]ははじま丸[）)]\s*(.+?)(?=【|[（(][^）)]+丸[）)]|$)", raw_text)
     if ship_blocks:
-        target_text = " ".join(ship_blocks)
+        section_raw = " ".join(ship_blocks)
     else:
-        m = re.search(r"(【母島】|母島\s*沖港)(.*?)(【運航状況のご案内について】|本ページの情報に基づく|大型客船は|$)", text)
+        m = re.search(r"(?:【母島】|母島\s*沖港)(.*)", raw_text)
         if not m:
             return {"status": "確認不能", "is_alert": "false", "reason": "hahajima_section_not_found", "source_url": SOURCES["hahajima_status"]}
-        target_text = m.group(2).strip()
+        section_raw = m.group(1)
 
-    if not target_text:
-        return {"status": "確認不能", "is_alert": "false", "reason": "empty_port_section", "source_url": SOURCES["hahajima_status"]}
+    # Strip boilerplate ("※運航状況が「[条件付運航]」の場合：..." and legends) BEFORE checking any keywords!
+    cleaned = strip_umisora_boilerplate(section_raw)
+    if not cleaned:
+        return {"status": "確認不能", "is_alert": "false", "reason": "empty_after_boilerplate_strip", "source_url": SOURCES["hahajima_status"]}
 
-    concise = extract_concise_hahajima_detail(target_text)
+    # Extract all bracketed icon tags like [運航], [欠航], [条件付運航], [時間変更], [その他情報あり]
+    icon_tags = re.findall(r"\[([^\]]+)\]", cleaned)
+    # Remove bracketed icon tags and port header to inspect actual human-written remarks
+    plain_remarks = re.sub(r"\[[^\]]+\]", " ", cleaned)
+    plain_remarks = re.sub(r"^(?:【母島】|母島\s*沖港)\s*", "", plain_remarks)
+    plain_remarks = re.sub(r"[・･\*]+", " ", plain_remarks)
+    plain_remarks = re.sub(r"\s+", " ", plain_remarks).strip()
 
-    if re.search(r"(全便欠航|本日欠航|欠航決定|\b欠航\b|欠航|運休)", target_text):
-        status = concise if concise else "欠航・運休"
-        is_alert = "true"
-    elif re.search(r"(時刻変更|時間変更|ダイヤ変更|繰り上げ|繰り下げ|条件付就航|条件付|遅延|延発|抜港)", target_text):
-        status = concise if concise else "時刻変更・条件付"
-        is_alert = "true"
-    elif re.search(r"(通常運航|運航)", target_text):
-        status = "通常運航"
-        is_alert = "false"
-    else:
-        status = "確認不能"
-        is_alert = "false"
+    # Check if any icon tag indicates cancellation or conditional/time change
+    has_cancel_tag = any(re.search(r"(欠航|運休)", t) for t in icon_tags)
+    has_change_tag = any(re.search(r"(条件付|時間変更|時刻変更|ダイヤ変更|繰り上げ|繰り下げ|遅延)", t) for t in icon_tags)
+    has_normal_tag = any(re.search(r"^(?:通常)?運航(?:\(予定\))?$", t) for t in icon_tags)
 
-    return {
-        "status": status,
-        "is_alert": is_alert,
-        "source_url": SOURCES["hahajima_status"],
-    }
+    if has_cancel_tag or re.search(r"(全便欠航|本日欠航|欠航決定|欠航|運休)", plain_remarks):
+        summary = plain_remarks if plain_remarks else "欠航・運休"
+        if len(summary) > 40:
+            summary = summary[:39].rstrip() + "…"
+        return {"status": summary, "is_alert": "true", "source_url": SOURCES["hahajima_status"]}
+
+    if has_change_tag or re.search(r"(条件付|時間変更|時刻変更|ダイヤ変更|繰り上げ|繰り下げ|遅延|延発|抜港)", plain_remarks):
+        # Build a concise string combining tag label (if not already in plain_remarks) + plain_remarks
+        cond_tag = next((t for t in icon_tags if re.search(r"(条件付|時間変更|時刻変更|ダイヤ変更|繰り上げ|繰り下げ|遅延)", t)), "")
+        if plain_remarks and cond_tag and cond_tag not in plain_remarks:
+            summary = f"{cond_tag}（{plain_remarks}）"
+        elif plain_remarks:
+            summary = plain_remarks
+        else:
+            summary = cond_tag or "時刻変更・条件付"
+        if len(summary) > 40:
+            summary = summary[:39].rstrip() + "…"
+        return {"status": summary, "is_alert": "true", "source_url": SOURCES["hahajima_status"]}
+
+    if has_normal_tag or re.search(r"(通常運航|運航)", plain_remarks):
+        return {"status": "通常運航", "is_alert": "false", "source_url": SOURCES["hahajima_status"]}
+
+    return {"status": "確認不能", "is_alert": "false", "source_url": SOURCES["hahajima_status"]}
 
 
 def extract_schedule_override(text: str, now_jst: datetime) -> Optional[Dict[str, str]]:
@@ -355,37 +374,42 @@ def build_notification_text(data: Dict[str, Any]) -> str:
 def run_test_mode() -> int:
     now_jst = datetime(2026, 11, 27, 16, 0, tzinfo=JST)
 
-    real_like_haha_html = """
+    # 1) Actual production HTML pattern reported in screenshot:
+    #    "母島 沖港 [運航] [運航] [その他情報あり] ※運航状況が「[条件付運航]」の場合：…"
+    #    Must return "通常運航" with is_alert="false"!
+    actual_prod_html = """
     <html><body>
       <div class="port">
-        【母島】母島 沖港
-        <ul>
-          <li>運航(予定)</li>
-          <li>欠航・運休</li>
-          <li>条件付就航・時間変更・ダイヤ変更・その他情報あり</li>
-        </ul>
-        <p>(ははじま丸) 運航 【母島】母島 沖港 14:00 16:00</p>
+        母島 沖港
+        <img alt="運航" src="ok.png">
+        <img alt="運航" src="ok.png">
+        <img alt="その他情報あり" src="info.png">
+        <p>※運航状況が「<img alt="条件付運航" src="cond.png">」の場合：天候により抜港する場合があります。</p>
       </div>
     </body></html>
     """
-    res1 = parse_hahajima_status(real_like_haha_html)
-    assert res1["status"] == "通常運航" and res1["is_alert"] == "false"
+    res1 = parse_hahajima_status(actual_prod_html)
+    assert res1["status"] == "通常運航" and res1["is_alert"] == "false", f"res1={res1}"
 
+    # 2) Actual conditional sailing with concise reason -> must return concise text without icon noise
     cond_haha_html = """
     <html><body>
       <div class="port">
-        【母島】母島 沖港
-        <ul><li>条件付就航・時間変更・ダイヤ変更・その他情報あり</li></ul>
-        <p>(ははじま丸) 条件付就航（海上不良のため） ☏ 04996-9-0033</p>
+        母島 沖港
+        <img alt="条件付運航" src="cond.png">
+        <span>海上不良のため</span>
+        <p>※運航状況が「<img alt="条件付運航" src="cond.png">」の場合：天候により抜港する場合があります。</p>
       </div>
     </body></html>
     """
     res2 = parse_hahajima_status(cond_haha_html)
-    assert res2["status"] == "条件付就航（海上不良のため）" and res2["is_alert"] == "true", f"res2={res2}"
+    assert res2["status"] == "条件付運航（海上不良のため）" and res2["is_alert"] == "true", f"res2={res2}"
 
+    # 3) Broken / empty HTML -> "確認不能"
     broken_html = "<html><body><div>メンテナンス中です</div></body></html>"
     assert parse_hahajima_status(broken_html)["status"] == "確認不能"
 
+    # 4) Time override parser
     ov1 = extract_schedule_override("12月1日の父島出港時刻を15時00分から13時00分に変更します。", now_jst)
     assert ov1 == {"target_date": "2026-12-01", "type": "dep", "new_time": "13:00"}
 
