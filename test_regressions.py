@@ -46,4 +46,33 @@ class RegressionTests(unittest.TestCase):
             self.assertEqual(data['hahajima_status']['status'],'確認不能')
             self.assertEqual(data['persisted_overrides'],[])
 
+class NoticeTests(unittest.TestCase):
+    def item(self, title, body='', published='2026-11-09'):
+        return {'title':title,'body':body,'published_date':published,'is_alert':True,'url':'https://example.org/'}
+    def test_old_notice_current_summary_separate(self):
+        old = self.item('台風32号による運航変更','11月10日の父島出港時刻を14時00分に変更します。')
+        active, unresolved, past = classify_notices([old], NOW)
+        self.assertEqual(active,[]); self.assertEqual(unresolved,[])
+        self.assertEqual(past[0]['target_dates'],['2026-11-10'])
+    def test_future_notice(self):
+        a,u,p = classify_notices([self.item('12月1日の父島出港便は欠航です。')],NOW)
+        self.assertEqual(a[0]['target_dates'],['2026-12-01']); self.assertEqual(u+p,[])
+    def test_unknown_date(self):
+        a,u,p = classify_notices([self.item('台風による運航変更')],NOW)
+        self.assertEqual(a+p,[]); self.assertEqual(len(u),1)
+    def test_open_ended(self):
+        a,u,p = classify_notices([self.item('11月10日以降の運航は当面変更します')],NOW)
+        self.assertEqual(a+p,[]); self.assertEqual(len(u),1)
+    def test_without_publication_year(self):
+        a,u,p = classify_notices([self.item('11月10日の父島出港便は欠航です。',published=None)],NOW)
+        self.assertEqual(a+p,[]); self.assertEqual(len(u),1)
+    def test_published_not_modified(self):
+        xml = '<feed xmlns="http://purl.org/atom/ns#"><entry><title>運航変更</title><issued>2026-11-09T12:00:00+09:00</issued><modified>2026-11-28T12:00:00+09:00</modified><summary>11月10日の父島出港便は欠航です。</summary></entry></feed>'
+        items,err = parse_ogamaru_blog_atom(xml)
+        self.assertIsNone(err); self.assertEqual(items[0]['published_date'],'2026-11-09'); self.assertEqual(items[0]['modified_date'],'2026-11-28')
+        self.assertEqual(len(classify_notices(items,NOW)[2]),1)
+    def test_history_deduplicates(self):
+        past = classify_notices([self.item('11月10日の父島出港便は欠航です。')],NOW)[2]
+        self.assertEqual(len(merge_notice_history(past,past,'2026-11-28')),1)
+
 if __name__ == '__main__': unittest.main()

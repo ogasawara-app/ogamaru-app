@@ -548,9 +548,36 @@
       return sourceOK('ogamaru_next') && sourceOK('ogamaru_info') &&
         /^ogamaru_blog_feed(?:_http)?: ok \(\d+ items\)$/.test(state.liveData.source_status?.ogamaru_blog_feed || '');
     }
-    function ogaNeedsCheck() {
+    function currentNotices(data = state.liveData) {
+      if (data?.notice_schema !== 1) return [];
+      return (data.alerts || []).filter(n => n.target_dates?.some(d => d >= getTodayStr()));
+    }
+    function unresolvedNotices(data = state.liveData) {
+      return data?.notice_schema === 1 ? (data.unresolved_notices || []) : (data?.alerts || []);
+    }
+    function nextSummaryWarning(data = state.liveData) {
+      return /欠航|運休|変更|遅延|繰り上げ|繰り下げ|未定|条件付|延発|抜港/.test(data?.next_summary || '');
+    }
+    function ogaNeedsCheck(date = null) {
+      if (!ogaConfirmed()) return true;
       const d = state.liveData;
-      return !ogaConfirmed() || Boolean(d?.alerts?.length || /欠航|運休|変更|遅延|繰り上げ|繰り下げ|未定|条件付|延発|抜港/.test(d?.next_summary || ''));
+      if (d?.notice_schema !== 1) return true;
+      if (!date) return Boolean(currentNotices(d).length || unresolvedNotices(d).length || nextSummaryWarning(d));
+      return nextSummaryWarning(d) || currentNotices(d).some(n => n.target_dates.includes(date)) ||
+        Boolean(d.cancellations?.some(c => c.target_date === date));
+    }
+    function safeNoticeUrl(value) {
+      try { const u = new URL(value); return ['https:', 'http:'].includes(u.protocol) ? u.href : ''; } catch (_) { return ''; }
+    }
+    function noticeCard(n, archived = false) {
+      const url = safeNoticeUrl(n.url);
+      return `<div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+        <div class="text-[11px] text-slate-500">発表日：${escapeHtml(n.published_date || '不明')} ${n.modified_date ? '・更新日：'+escapeHtml(n.modified_date) : ''}</div>
+        <div class="text-sm font-bold text-slate-800">${escapeHtml(n.title)}</div>
+        <div class="text-xs text-slate-600">対象日：${escapeHtml(n.target_dates?.join('、') || '未判定')}${archived ? '（過去の対象日）' : ''}</div>
+        ${n.body ? `<p class="text-xs text-slate-600 leading-relaxed">${escapeHtml(n.body)}</p>` : ''}
+        ${url ? `<a class="text-xs text-sky-700 underline" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">元の記事を確認</a>` : ''}
+      </div>`;
     }
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -709,7 +736,8 @@
 
       const activeChange = SCENARIOS[state.scenario];
       const hasOgaAlert = Boolean(activeChange);
-      const ogaUnknown = !ogaConfirmed();
+      const ogaUnknown = !ogaConfirmed() || state.liveData?.notice_schema !== 1;
+      const hasUnresolved = unresolvedNotices().length > 0;
 
       // Hahajima live status from JSON
       const hahaStatusObj = state.liveData && state.liveData.hahajima_status;
@@ -725,7 +753,7 @@
       if (hasOgaAlert || isHahaAlert) {
         box.className = 'rounded-2xl bg-rose-50/90 border-2 border-rose-300 px-4 py-3 shadow-xs space-y-2';
         if (hahaDivider) hahaDivider.className = 'flex items-start justify-between gap-2 pt-2 border-t border-rose-200/80';
-      } else if (!isHahaNormal || ogaUnknown) {
+      } else if (!isHahaNormal || ogaUnknown || hasUnresolved) {
         box.className = 'rounded-2xl bg-amber-50/80 border border-amber-300/80 px-4 py-3 shadow-xs space-y-2';
         if (hahaDivider) hahaDivider.className = 'flex items-start justify-between gap-2 pt-2 border-t border-amber-200/80';
       } else {
@@ -752,6 +780,13 @@
         ogaDetailText.textContent = '公式サイトで最新情報を確認してください。';
         ogaDetailText.classList.remove('hidden');
         ogaDetailBtn.classList.add('hidden');
+      } else if (hasUnresolved) {
+        ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 mt-1.5';
+        ogaText.textContent = '対象日未判定のお知らせあり';
+        ogaText.className = 'text-sm font-bold text-amber-900';
+        ogaDetailText.textContent = '過去の告知を含む可能性があります。日時の変更画面で原文を確認できます。';
+        ogaDetailText.classList.remove('hidden');
+        ogaDetailBtn.classList.remove('hidden');
       } else {
         ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0 mt-1.5';
         ogaText.textContent = '変更情報なし（取得範囲内）';
@@ -818,7 +853,7 @@
       // Today's Date & Ship Status Badge
       document.getElementById('homeTodayDate').textContent = `${fmtDateShort(today)}${fmtWeekday(today)}`;
       document.getElementById('shipStatusText').textContent = ogaNeedsCheck() ? '運航状況は公式確認が必要です' : '予定上：' + getShipStatus(today);
-      document.getElementById('nextEventBox').classList.toggle('opacity-60', ogaNeedsCheck());
+      document.getElementById('nextEventBox').classList.remove('opacity-60');
       document.getElementById('prevEventBox').classList.toggle('invisible', !prevEvt);
       document.getElementById('afterEventBox').classList.toggle('invisible', !afterEvt);
       document.getElementById('touristSubPanel').classList.toggle('hidden', !nextEvt);
@@ -871,11 +906,11 @@
         const defaultT = nextEvt.type === 'arr' ? '11:00' : '15:00';
         normalTimeEl.classList.add('hidden');
         changedTimeEl.classList.remove('hidden');
-        changedTimeEl.textContent = `変更 ${nextEvt.time}${ogaNeedsCheck() ? "・要確認" : ""}`;
+        changedTimeEl.textContent = `変更 ${nextEvt.time}${ogaNeedsCheck(nextEvt.date) ? "・要確認" : ""}`;
       } else {
         normalTimeEl.classList.remove('hidden');
         changedTimeEl.classList.add('hidden');
-        normalTimeEl.textContent = `予定 ${nextEvt.time}${ogaNeedsCheck() ? "・要確認" : ""}`;
+        normalTimeEl.textContent = `予定 ${nextEvt.time}${ogaNeedsCheck(nextEvt.date) ? "・要確認" : ""}`;
       }
 
       // Right (After Next)
@@ -915,7 +950,9 @@
       const hahaObjHome = sourceOK('hahajima_status') && state.liveData.hahajima_status;
       const hasHahaAlertHome = Boolean(hahaObjHome && hahaObjHome.status && hahaObjHome.status !== '通常運航' && hahaObjHome.status !== '確認不能' && (hahaObjHome.is_alert === 'true' || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaObjHome.status)));
 
-      if (activeChange || hasHahaAlertHome) {
+      if (activeChange || hasHahaAlertHome || unresolvedNotices().length) {
+        navDot.classList.toggle('bg-rose-600', Boolean(activeChange || hasHahaAlertHome));
+        navDot.classList.toggle('bg-amber-500', !activeChange && !hasHahaAlertHome);
         navDot.classList.remove('hidden');
       } else {
         navDot.classList.add('hidden');
@@ -1045,7 +1082,7 @@
         <div class="pt-3 space-y-2.5 text-xs sm:text-sm">
           <div class="flex items-start gap-2.5">
             <span class="font-bold text-sky-800 w-24 shrink-0">おがさわら丸</span>
-            <span class="text-slate-700">${ogText}${ogaNeedsCheck() && state.selectedDate >= state.simDate ? ' <strong class="text-amber-700">（要公式確認）</strong>' : '（予定）'}</span>
+            <span class="text-slate-700">${ogText}${ogaNeedsCheck(state.selectedDate) && state.selectedDate >= state.simDate && og.role !== 'none' ? ' <strong class="text-amber-700">（要公式確認）</strong>' : '（予定）'}</span>
           </div>
           <div class="flex items-start gap-2.5">
             <span class="font-bold text-teal-800 w-24 shrink-0">ははじま丸</span>
@@ -1062,7 +1099,7 @@
       const today = state.simDate;
 
       // Upcoming changed events & Hahajima concise alert
-      const upcomingChanges = getEventsList().filter(ev => ev.isChanged && ev.date >= today);
+      const upcomingChanges = getEventsList().filter(ev => (ev.isChanged || ev.cancelled) && ev.date >= today);
       const hahaObj = sourceOK('hahajima_status') && state.liveData.hahajima_status;
       const hahaAlertText = (hahaObj && hahaObj.status && hahaObj.status !== '通常運航' && hahaObj.status !== '確認不能' && (hahaObj.is_alert === 'true' || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaObj.status)))
         ? hahaObj.status
@@ -1091,7 +1128,7 @@
                   <span class="px-2 py-0.5 rounded bg-rose-600 text-white text-[11px] font-bold">父島${ev.label}</span>
                 </div>
                 <div class="font-extrabold text-rose-700">
-                  <span class="text-slate-400 line-through font-normal text-xs mr-1">${defT}</span>→ ${ev.time}
+                  ${ev.cancelled ? "欠航情報" : `<span class="text-slate-400 line-through font-normal text-xs mr-1">${defT}</span>→ ${ev.time}`}
                 </div>
               </div>
             `;
@@ -1099,7 +1136,7 @@
 
           html += `
             <div class="rounded-2xl bg-rose-50 border border-rose-300 p-4 space-y-2">
-              <div class="text-xs font-extrabold text-rose-700">時刻変更（適用中）</div>
+              <div class="text-xs font-extrabold text-rose-700">時刻変更・欠航情報（適用中）</div>
               <div class="divide-y divide-rose-200/60">${rows}</div>
             </div>
           `;
@@ -1109,20 +1146,22 @@
           html += `
             <div class="rounded-2xl bg-rose-50/70 border border-rose-200 p-4">
               <div class="flex items-center justify-between text-[11px] text-rose-700 font-bold mb-1">
-                <span>公式発表</span>
-                <span>${escapeHtml(activeChange.updatedAt)}</span>
+                <span>${activeChange.publishedDate ? "発表日" : "情報確認日時"}</span>
+                <span>${escapeHtml(activeChange.publishedDate || activeChange.updatedAt)}</span>
               </div>
               <div class="text-sm font-bold text-rose-950">${escapeHtml(activeChange.title)}</div>
+              ${activeChange.targetDates?.length ? `<p class="text-xs text-rose-800">対象日候補：${escapeHtml(activeChange.targetDates.join("、"))}</p>` : ""}
               <p class="text-xs text-rose-900 mt-1 leading-relaxed">${escapeHtml(activeChange.desc)}</p>
+              ${activeChange.url ? `<a class="text-xs text-sky-700 underline" href="${escapeHtml(activeChange.url)}" target="_blank" rel="noopener noreferrer">元の記事を確認</a>` : ''}
             </div>
           `;
         }
       } else {
         html += `
-          <div class="rounded-2xl bg-emerald-50/70 border border-emerald-200 p-4 flex items-center gap-3">
+          <div class="rounded-2xl ${ogaNeedsCheck() || !sourceOK('hahajima_status') ? "bg-amber-50 border-amber-200" : "bg-emerald-50/70 border-emerald-200"} border p-4 flex items-center gap-3">
             <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 shrink-0"></i>
             <div class="text-xs text-emerald-900">
-              <div class="font-bold">${ogaConfirmed() && sourceOK('hahajima_status') ? "取得範囲内で変更情報なし" : "最新情報を確認できません"}</div>
+              <div class="font-bold">${!ogaNeedsCheck() && sourceOK('hahajima_status') ? "取得範囲内で変更情報なし" : "未確認の情報があります"}</div>
               <div class="mt-0.5">実際の運航は公式サイトでご確認ください。</div>
             </div>
           </div>
@@ -1132,6 +1171,12 @@
       if (ogaNeedsCheck() || !sourceOK('hahajima_status')) {
         html = '<p class="text-xs text-amber-800 bg-amber-50 p-3 rounded-xl">未確認または変更情報あり。欠航・日付変更は予定表に自動反映されない場合があります。公式情報をご確認ください。</p>' + html;
       }
+      const other = currentNotices().slice(1);
+      if (other.length) html += '<h3 class="font-bold text-sm">その他の対象日付きのお知らせ</h3>' + other.map(n => noticeCard(n)).join('');
+      const pending = unresolvedNotices();
+      if (pending.length) html += '<h3 class="font-bold text-sm text-amber-800">対象日未判定のお知らせ（過去の告知を含む）</h3>' + pending.map(n => noticeCard(n)).join('');
+      const history = state.liveData?.notice_history || [];
+      if (history.length) html += '<details class="space-y-2"><summary class="font-bold text-sm text-slate-600">過去の対象日のお知らせ（運航実績ではありません）</summary>' + history.map(n => noticeCard(n,true)).join('') + '</details>';
       feed.innerHTML = html;
       window.lucide?.createIcons();
     }
@@ -1163,7 +1208,8 @@
         count++;
         const row = document.createElement('div');
         const isToday = dateStr === state.simDate;
-        row.className = `py-2.5 px-2 flex items-center justify-between gap-2 text-xs ${isToday ? 'bg-teal-50/70 rounded-xl' : ''}`;
+        row.dataset.date = dateStr;
+        row.className = `py-2 px-2 flex items-center justify-between gap-2 text-xs ${isToday ? 'bg-teal-50/70 rounded-xl' : ''}`;
 
         let badge = '';
         if (ogamaru.role === 'arr') {
@@ -1176,8 +1222,9 @@
             : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">おが丸出港</span>';
         }
 
+        if (ogamaru.cancelled) badge = '<span class="text-xs font-bold text-rose-700">おが丸欠航情報</span>';
         let timeHtml = '';
-        if (haha.status === 'rest') {
+        if (haha.status === 'unknown') { timeHtml = '<span class="text-slate-500">ダイヤ未収録</span>'; } else if (haha.status === 'rest') {
           timeHtml = '<span class="text-slate-400 font-medium">運休</span>';
         } else {
           timeHtml = `
@@ -1220,7 +1267,13 @@
       mainEl.scrollTop = 0;
       if (tabName === 'home') renderHome();
       if (tabName === 'calendar') renderCalendar();
-      if (tabName === 'hahajima') renderHahajima();
+      if (tabName === 'hahajima') {
+        renderHahajima();
+        if (state.hahaMonth === state.simDate.slice(0,7)) {
+          const todayRow = document.querySelector(`#hahajimaList [data-date="${state.simDate}"]`);
+          if (todayRow) mainEl.scrollTop = Math.max(0, todayRow.getBoundingClientRect().top - mainEl.getBoundingClientRect().top - 36);
+        }
+      }
       if (tabName === 'changes') renderChanges();
     }
 
@@ -1294,9 +1347,9 @@
           warnEl.classList.toggle('hidden', ogaConfirmed() && sourceOK('hahajima_status'));
         }
 
-        const ov = data.schema_version === 2 ? data.parsed_override : null;
-        if ((data.alerts && data.alerts.length > 0) || ov || /欠航|運休|変更|遅延|繰り上げ|繰り下げ|未定|条件付|延発|抜港/.test(data.next_summary || '')) {
-          const topAlert = (data.alerts && data.alerts[0]) || null;
+        const ov = data.schema_version === 2 && data.parsed_override?.target_date >= getTodayStr() ? data.parsed_override : null;
+        const topAlert = currentNotices(data)[0] || null;
+        if (topAlert || ov || nextSummaryWarning(data)) {
           SCENARIOS.live = {
             id: 'live',
             targetDate: ov ? ov.target_date : '',
@@ -1304,8 +1357,11 @@
             newTime: ov ? ov.new_time : '',
             oldTime: '',
             title: topAlert ? topAlert.title : (ov ? `${ov.target_date} 運航時刻変更のお知らせ` : '運航変更・欠航情報（要確認）'),
-            desc: data.next_summary || '公式サイトで詳細をご確認ください。',
-            updatedAt: data.updated_at || '最新'
+            desc: topAlert ? (topAlert.body || '元の記事で詳細をご確認ください。') : (data.next_summary || '公式サイトで詳細をご確認ください。'),
+            publishedDate: topAlert?.published_date || null,
+            targetDates: topAlert?.target_dates || [],
+            url: safeNoticeUrl(topAlert?.url || 'https://www.ogasawarakaiun.co.jp/info/?page_id=9'),
+            updatedAt: data.updated_at || '不明'
           };
         } else {
           SCENARIOS.live = null;

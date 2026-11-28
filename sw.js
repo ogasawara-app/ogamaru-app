@@ -1,5 +1,5 @@
 // Network first; cached data is explicitly identified as unverified.
-const CACHE_NAME = 'ogamaru-app-v2';
+const CACHE_NAME = 'ogamaru-app-v3';
 const SHELL = ['./', './index.html', './manifest.json', './icon.jpg', './icon-192.png', './icon-512.png'];
 const EXTERNAL = ['https://cdn.tailwindcss.com/3.4.17', 'https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js'];
 self.addEventListener('install', event => {
