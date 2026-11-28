@@ -148,44 +148,35 @@
         </div>
       </div>
 
-      <!-- Compact Operation Status Card -->
+      <!-- Unified Operation Status & Change Summary Card -->
       <div id="operationStatusBox" class="rounded-2xl bg-emerald-50/90 border border-emerald-300/90 px-4 py-3 shadow-xs space-y-2">
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <span id="ogaStatusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0"></span>
-            <span class="text-xs font-bold text-slate-600">おがさわら丸：</span>
-            <span id="ogaStatusMainText" class="text-sm font-extrabold text-emerald-950">通常運航</span>
+        <!-- Ogasawara Maru Row -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-start gap-2 min-w-0">
+            <span id="ogaStatusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0 mt-1.5"></span>
+            <div class="min-w-0">
+              <div class="flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
+                <span class="text-xs font-bold text-slate-600 shrink-0">おがさわら丸：</span>
+                <span id="ogaStatusMainText" class="text-sm font-extrabold text-emerald-950">通常運航</span>
+              </div>
+              <p id="ogaStatusDetailText" class="hidden text-xs text-rose-900 mt-0.5 leading-snug"></p>
+            </div>
           </div>
+          <button id="ogaStatusDetailBtn" type="button" data-goto="changes" class="hidden text-[11px] font-bold text-rose-700 hover:underline shrink-0 mt-0.5">詳細 →</button>
         </div>
-        <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-emerald-200/70">
-          <div class="flex items-center gap-2">
-            <span id="hahaStatusDot" class="w-2.5 h-2.5 rounded-full bg-teal-600 shrink-0"></span>
-            <span class="text-xs font-bold text-slate-600">ははじま丸：</span>
-            <span id="hahaStatusMainText" class="text-sm font-extrabold text-teal-950">通常運航</span>
-          </div>
-          <button type="button" data-goto="hahajima" class="text-[11px] font-bold text-teal-700 hover:underline shrink-0">詳細 →</button>
-        </div>
-      </div>
 
-      <!-- Bottom Area: Emergency Alert Card (Shown only when an emergency change is active) -->
-      <div id="emergencyContainer">
-        <div id="emergencyAlertCard" class="hidden rounded-2xl bg-rose-50 border-2 border-rose-300 p-4 shadow-sm">
-          <div class="flex items-start gap-3">
-            <div class="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-              <i data-lucide="alert-triangle" class="w-5 h-5"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-xs font-extrabold uppercase tracking-wider text-rose-700">緊急の運航変更</span>
-                <span id="emergencyUpdatedAt" class="text-[11px] text-rose-600 font-medium">先ほど更新</span>
-              </div>
-              <h2 id="emergencyTitle" class="text-sm sm:text-base font-bold text-rose-950 mt-0.5"></h2>
-              <p id="emergencyDesc" class="text-xs sm:text-sm text-rose-900 mt-1 leading-relaxed"></p>
-              <div class="mt-2.5 flex items-center gap-3">
-                <button type="button" data-goto="changes" class="text-xs font-bold text-rose-700 hover:text-rose-900 underline">変更詳細を見る →</button>
+        <!-- Hahajima Maru Row -->
+        <div id="hahaStatusDivider" class="flex items-start justify-between gap-2 pt-2 border-t border-emerald-200/70">
+          <div class="flex items-start gap-2 min-w-0">
+            <span id="hahaStatusDot" class="w-2.5 h-2.5 rounded-full bg-teal-600 shrink-0 mt-1.5"></span>
+            <div class="min-w-0">
+              <div class="flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
+                <span class="text-xs font-bold text-slate-600 shrink-0">ははじま丸：</span>
+                <span id="hahaStatusMainText" class="text-sm font-extrabold text-teal-950">通常運航</span>
               </div>
             </div>
           </div>
+          <button type="button" data-goto="hahajima" class="text-[11px] font-bold text-teal-700 hover:underline shrink-0 mt-0.5">詳細 →</button>
         </div>
       </div>
 
@@ -336,7 +327,7 @@
           </h3>
           <ul class="text-xs leading-relaxed space-y-1 text-slate-600 list-disc pl-4">
             <li><strong>iPhone (Safari)：</strong>画面下の共有ボタン（□に↑）→「ホーム画面に追加」</li>
-            <li><strong>Android (Chrome)：</strong>右上のメニュー（⋮）→「ホーム画面に追加」</li>
+            <li><strong>Android (Chrome)：</strong>右上のメニュー（⋮）→「アプリをインストール」または「ホーム画面に追加」</li>
           </ul>
         </div>
 
@@ -674,6 +665,9 @@
       const box = document.getElementById('operationStatusBox');
       const ogaDot = document.getElementById('ogaStatusDot');
       const ogaText = document.getElementById('ogaStatusMainText');
+      const ogaDetailText = document.getElementById('ogaStatusDetailText');
+      const ogaDetailBtn = document.getElementById('ogaStatusDetailBtn');
+      const hahaDivider = document.getElementById('hahaStatusDivider');
       const hahaDot = document.getElementById('hahaStatusDot');
       const hahaText = document.getElementById('hahaStatusMainText');
       const hahaBanner = document.getElementById('hahaLiveBanner');
@@ -695,25 +689,39 @@
         || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaStatusStr);
 
       if (hasOgaAlert || isHahaAlert) {
-        box.className = 'rounded-2xl bg-rose-50/90 border border-rose-300 px-4 py-3 shadow-xs space-y-2';
+        box.className = 'rounded-2xl bg-rose-50/90 border-2 border-rose-300 px-4 py-3 shadow-xs space-y-2';
+        if (hahaDivider) hahaDivider.className = 'flex items-start justify-between gap-2 pt-2 border-t border-rose-200/80';
       } else if (!isHahaNormal) {
         box.className = 'rounded-2xl bg-amber-50/80 border border-amber-300/80 px-4 py-3 shadow-xs space-y-2';
+        if (hahaDivider) hahaDivider.className = 'flex items-start justify-between gap-2 pt-2 border-t border-amber-200/80';
       } else {
         box.className = 'rounded-2xl bg-emerald-50/90 border border-emerald-300/90 px-4 py-3 shadow-xs space-y-2';
+        if (hahaDivider) hahaDivider.className = 'flex items-start justify-between gap-2 pt-2 border-t border-emerald-200/70';
       }
 
       if (hasOgaAlert) {
-        ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 animate-pulse';
-        ogaText.textContent = '運航変更・お知らせあり';
-        ogaText.className = 'text-sm font-extrabold text-rose-900';
+        ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 mt-1.5 animate-pulse';
+        ogaText.textContent = activeChange.title || '運航変更あり';
+        ogaText.className = 'text-sm font-extrabold text-rose-950';
+        if (activeChange.desc) {
+          ogaDetailText.textContent = activeChange.desc;
+          ogaDetailText.classList.remove('hidden');
+        } else {
+          ogaDetailText.textContent = '';
+          ogaDetailText.classList.add('hidden');
+        }
+        ogaDetailBtn.classList.remove('hidden');
       } else {
-        ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0';
+        ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0 mt-1.5';
         ogaText.textContent = '通常運航';
         ogaText.className = 'text-sm font-extrabold text-emerald-950';
+        ogaDetailText.textContent = '';
+        ogaDetailText.classList.add('hidden');
+        ogaDetailBtn.classList.add('hidden');
       }
 
       if (isHahaNormal) {
-        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-teal-600 shrink-0';
+        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-teal-600 shrink-0 mt-1.5';
         hahaText.textContent = '通常運航';
         hahaText.className = 'text-sm font-extrabold text-teal-950';
         if (hahaBanner) hahaBanner.className = 'mb-3 rounded-2xl bg-teal-50/80 border border-teal-200 px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs';
@@ -723,7 +731,7 @@
         }
         if (hahaBannerDot) hahaBannerDot.className = 'w-2 h-2 rounded-full bg-teal-600 shrink-0';
       } else if (isHahaAlert) {
-        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 animate-pulse';
+        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 mt-1.5 animate-pulse';
         hahaText.textContent = hahaStatusStr;
         hahaText.className = 'text-sm font-extrabold text-rose-800';
         if (hahaBanner) hahaBanner.className = 'mb-3 rounded-2xl bg-rose-50 border border-rose-300 px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs';
@@ -733,7 +741,7 @@
         }
         if (hahaBannerDot) hahaBannerDot.className = 'w-2 h-2 rounded-full bg-rose-600 shrink-0 animate-pulse';
       } else {
-        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0';
+        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 mt-1.5';
         hahaText.textContent = '確認不能（公式サイト要確認）';
         hahaText.className = 'text-xs sm:text-sm font-bold text-amber-900';
         if (hahaBanner) hahaBanner.className = 'mb-3 rounded-2xl bg-amber-50/80 border border-amber-300 px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs';
@@ -842,27 +850,16 @@
 
       renderOperationStatus();
 
-      // Emergency Alert Area
+      // Bottom nav dot indicator
       const activeChange = SCENARIOS[state.scenario];
-      const alertCard = document.getElementById('emergencyAlertCard');
       const navDot = document.getElementById('navChangeDot');
-
       const hahaObjHome = state.liveData && state.liveData.hahajima_status;
       const hasHahaAlertHome = Boolean(hahaObjHome && hahaObjHome.status && hahaObjHome.status !== '通常運航' && hahaObjHome.status !== '確認不能' && (hahaObjHome.is_alert === 'true' || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaObjHome.status)));
 
-      if (activeChange) {
-        alertCard.classList.remove('hidden');
+      if (activeChange || hasHahaAlertHome) {
         navDot.classList.remove('hidden');
-        document.getElementById('emergencyTitle').textContent = activeChange.title;
-        document.getElementById('emergencyDesc').textContent = activeChange.desc;
-        document.getElementById('emergencyUpdatedAt').textContent = activeChange.updatedAt;
       } else {
-        alertCard.classList.add('hidden');
-        if (hasHahaAlertHome) {
-          navDot.classList.remove('hidden');
-        } else {
-          navDot.classList.add('hidden');
-        }
+        navDot.classList.add('hidden');
       }
     }
 
@@ -1400,6 +1397,13 @@
       if (state.tab === 'home') renderHome();
     }, 60 * 1000);
     setInterval(syncScheduleData, 10 * 60 * 1000);
+
+    // Register Service Worker for offline support & Google Play TWA compliance
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
   </script>
   <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "94dbcfccfff8472db558f47fd0a95aea"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
