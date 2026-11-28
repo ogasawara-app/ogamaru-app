@@ -328,19 +328,6 @@
           </div>
         </div>
 
-        <!-- Display Preview Toggle (For checking alert UI anytime) -->
-        <div class="space-y-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
-          <h3 class="font-bold text-slate-900 flex items-center gap-1.5">
-            <i data-lucide="eye" class="w-4 h-4 text-slate-600"></i>
-            <span>表示プレビュー（動作確認用）</span>
-          </h3>
-          <p class="text-xs text-slate-500">運航変更や欠航が発生したときの画面表示を確認できます。</p>
-          <div class="grid grid-cols-2 gap-1.5 pt-1">
-            <button type="button" data-preview-mode="live" class="preview-mode-btn px-2 py-2 rounded-xl text-xs font-bold border transition text-center">実際の最新データ</button>
-            <button type="button" data-preview-mode="alert_demo" class="preview-mode-btn px-2 py-2 rounded-xl text-xs font-bold border transition text-center">変更ありプレビュー</button>
-          </div>
-        </div>
-
         <!-- Home Screen Install Guide -->
         <div class="space-y-1.5 pt-1">
           <h3 class="font-bold text-slate-900 flex items-center gap-1.5">
@@ -475,17 +462,7 @@
 
     const SCENARIOS = {
       none: null,
-      live: null,
-      alert_demo: {
-        id: 'alert_demo',
-        targetDate: '2026-12-01',
-        type: 'dep',
-        newTime: '10:00',
-        oldTime: '15:00',
-        title: '【プレビュー】12月1日(火) 父島出港時刻の繰り上げ',
-        desc: '※これは表示確認用のプレビューです。海況悪化のため父島出港時刻が通常の15:00から「10:00発」へ繰り上げとなった場合の表示イメージです。',
-        updatedAt: 'プレビュー表示中'
-      }
+      live: null
     };
 
     // =========================================================================
@@ -520,7 +497,6 @@
       tab: 'home',
       simDate: INITIAL_TODAY,
       scenario: 'none',
-      previewMode: 'live', // 'live' | 'alert_demo'
       calYear: (initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 4) ? initY : 2026,
       calMonth: (initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 4) ? initM : 11,
       selectedDate: INITIAL_TODAY,
@@ -707,16 +683,16 @@
       const activeChange = SCENARIOS[state.scenario];
       const hasOgaAlert = Boolean(activeChange);
 
-      // Hahajima live status from JSON (or demo override)
+      // Hahajima live status from JSON
+      const hahaStatusObj = state.liveData && state.liveData.hahajima_status;
       let hahaStatusStr = '確認不能';
-      if (state.previewMode === 'alert_demo') {
-        hahaStatusStr = '時刻変更・条件付情報あり';
-      } else if (state.liveData && state.liveData.hahajima_status && state.liveData.hahajima_status.status) {
-        hahaStatusStr = state.liveData.hahajima_status.status;
+      if (hahaStatusObj && hahaStatusObj.status) {
+        hahaStatusStr = hahaStatusObj.status;
       }
 
       const isHahaNormal = hahaStatusStr === '通常運航';
-      const isHahaAlert = hahaStatusStr.includes('欠航') || hahaStatusStr.includes('変更') || hahaStatusStr.includes('条件付');
+      const isHahaAlert = (hahaStatusObj && hahaStatusObj.is_alert === 'true')
+        || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaStatusStr);
 
       if (hasOgaAlert || isHahaAlert) {
         box.className = 'rounded-2xl bg-rose-50/90 border border-rose-300 px-4 py-3 shadow-xs space-y-2';
@@ -825,9 +801,10 @@
       const normalTimeEl = document.getElementById('nextTimeNormal');
       const changedTimeEl = document.getElementById('nextTimeChanged');
       if (nextEvt.isChanged) {
+        const defaultT = nextEvt.type === 'arr' ? '11:00' : '15:00';
         normalTimeEl.classList.add('hidden');
         changedTimeEl.classList.remove('hidden');
-        changedTimeEl.textContent = `⚠ 時刻変更 ${nextEvt.time}`;
+        changedTimeEl.textContent = `変更 ${nextEvt.time}（通常${defaultT}）`;
       } else {
         normalTimeEl.classList.remove('hidden');
         changedTimeEl.classList.add('hidden');
@@ -870,6 +847,9 @@
       const alertCard = document.getElementById('emergencyAlertCard');
       const navDot = document.getElementById('navChangeDot');
 
+      const hahaObjHome = state.liveData && state.liveData.hahajima_status;
+      const hasHahaAlertHome = Boolean(hahaObjHome && hahaObjHome.status && hahaObjHome.status !== '通常運航' && hahaObjHome.status !== '確認不能' && (hahaObjHome.is_alert === 'true' || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaObjHome.status)));
+
       if (activeChange) {
         alertCard.classList.remove('hidden');
         navDot.classList.remove('hidden');
@@ -878,7 +858,11 @@
         document.getElementById('emergencyUpdatedAt').textContent = activeChange.updatedAt;
       } else {
         alertCard.classList.add('hidden');
-        navDot.classList.add('hidden');
+        if (hasHahaAlertHome) {
+          navDot.classList.remove('hidden');
+        } else {
+          navDot.classList.add('hidden');
+        }
       }
     }
 
@@ -966,11 +950,15 @@
       let ogText = 'おがさわら丸の父島入出港はありません';
       let ogBadge = '<span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs font-bold">運航なし / 航海中</span>';
       if (og.role === 'arr') {
-        ogText = `父島 入港（${og.time}着）`;
-        ogBadge = `<span class="px-2 py-0.5 rounded-md ${og.isChanged ? 'bg-rose-600 text-white' : 'bg-sky-600 text-white'} text-[11px] font-bold">${og.isChanged ? '⚠ 時刻変更' : '入港日'}</span>`;
+        ogText = og.isChanged
+          ? `<span class="font-extrabold text-rose-700">父島 入港 ${og.time}着</span> <span class="text-xs text-slate-400">（通常 11:00）</span>`
+          : `父島 入港（${og.time}着）`;
+        ogBadge = `<span class="px-2 py-0.5 rounded-md ${og.isChanged ? 'bg-rose-600 text-white' : 'bg-sky-600 text-white'} text-[11px] font-bold">${og.isChanged ? '時間変更' : '入港日'}</span>`;
       } else if (og.role === 'dep') {
-        ogText = `父島 出港（${og.time}発）`;
-        ogBadge = `<span class="px-2 py-0.5 rounded-md ${og.isChanged ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'} text-[11px] font-bold">${og.isChanged ? '⚠ 時刻変更' : '出港日'}</span>`;
+        ogText = og.isChanged
+          ? `<span class="font-extrabold text-rose-700">父島 出港 ${og.time}発</span> <span class="text-xs text-slate-400">（通常 15:00）</span>`
+          : `父島 出港（${og.time}発）`;
+        ogBadge = `<span class="px-2 py-0.5 rounded-md ${og.isChanged ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'} text-[11px] font-bold">${og.isChanged ? '時間変更' : '出港日'}</span>`;
       } else if (og.role === 'stay') {
         ogText = '父島 停泊中（終日停泊）';
         ogBadge = '<span class="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 text-[11px] font-bold">父島泊</span>';
@@ -1010,48 +998,73 @@
     function renderChanges() {
       const feed = document.getElementById('changesFeed');
       const activeChange = SCENARIOS[state.scenario];
+      const overrides = getActiveOverridesMap();
+      const today = state.simDate;
+
+      // Upcoming changed events & Hahajima concise alert
+      const upcomingChanges = getEventsList().filter(ev => ev.isChanged && ev.date >= today);
+      const hahaObj = state.liveData && state.liveData.hahajima_status;
+      const hahaAlertText = (hahaObj && hahaObj.status && hahaObj.status !== '通常運航' && hahaObj.status !== '確認不能' && (hahaObj.is_alert === 'true' || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaObj.status)))
+        ? hahaObj.status
+        : '';
 
       let html = '';
-      if (activeChange) {
-        html += `
-          <div class="rounded-2xl bg-rose-50 border border-rose-200 p-4">
-            <div class="flex items-center justify-between text-[11px] text-rose-700 font-bold mb-1">
-              <span>⚠ 緊急変更（適用中）</span>
-              <span>${activeChange.updatedAt}</span>
+      if (activeChange || upcomingChanges.length > 0 || hahaAlertText) {
+        if (hahaAlertText) {
+          html += `
+            <div class="rounded-2xl bg-rose-50 border border-rose-300 p-4 flex items-center justify-between gap-2">
+              <div class="space-y-0.5">
+                <div class="text-[11px] font-extrabold text-rose-700">ははじま丸</div>
+                <div class="text-sm font-extrabold text-rose-950">${hahaAlertText}</div>
+              </div>
+              <a href="https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-rose-700 underline shrink-0">公式確認</a>
             </div>
-            <div class="text-sm font-bold text-rose-950">${activeChange.title}</div>
-            <p class="text-xs text-rose-900 mt-1 leading-relaxed">${activeChange.desc}</p>
-          </div>
-        `;
+          `;
+        }
+        if (upcomingChanges.length > 0) {
+          const rows = upcomingChanges.map(ev => {
+            const defT = ev.type === 'arr' ? '11:00' : '15:00';
+            return `
+              <div class="flex items-center justify-between py-2 border-b border-rose-200/70 last:border-b-0 text-xs sm:text-sm">
+                <div class="flex items-center gap-2">
+                  <span class="font-extrabold text-rose-950">${fmtDateShort(ev.date)}${fmtWeekday(ev.date)}</span>
+                  <span class="px-2 py-0.5 rounded bg-rose-600 text-white text-[11px] font-bold">父島${ev.label}</span>
+                </div>
+                <div class="font-extrabold text-rose-700">
+                  <span class="text-slate-400 line-through font-normal text-xs mr-1">${defT}</span>→ ${ev.time}
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          html += `
+            <div class="rounded-2xl bg-rose-50 border border-rose-300 p-4 space-y-2">
+              <div class="text-xs font-extrabold text-rose-700">時刻変更（適用中）</div>
+              <div class="divide-y divide-rose-200/60">${rows}</div>
+            </div>
+          `;
+        }
+
+        if (activeChange) {
+          html += `
+            <div class="rounded-2xl bg-rose-50/70 border border-rose-200 p-4">
+              <div class="flex items-center justify-between text-[11px] text-rose-700 font-bold mb-1">
+                <span>公式発表</span>
+                <span>${activeChange.updatedAt}</span>
+              </div>
+              <div class="text-sm font-bold text-rose-950">${activeChange.title}</div>
+              <p class="text-xs text-rose-900 mt-1 leading-relaxed">${activeChange.desc}</p>
+            </div>
+          `;
+        }
       } else {
         html += `
           <div class="rounded-2xl bg-emerald-50/70 border border-emerald-200 p-4 flex items-center gap-3">
             <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 shrink-0"></i>
             <div class="text-xs text-emerald-900">
               <div class="font-bold">通常運航</div>
-              <div class="text-emerald-700 mt-0.5">入港 11:00 ／ 出港 15:00 の通常ダイヤで運航予定です。</div>
+              <div class="text-emerald-700 mt-0.5">入港 11:00 ／ 出港 15:00（予定通り）</div>
             </div>
-          </div>
-        `;
-      }
-
-      // Recent official notices / blog feed (links strictly to Ogasawara Kaiun top page per official link policy)
-      if (state.liveData && Array.isArray(state.liveData.recent_info) && state.liveData.recent_info.length > 0) {
-        const listItems = state.liveData.recent_info.slice(0, 6).map(item => `
-          <a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="block p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs font-bold text-slate-800 line-clamp-2">${item.title}</span>
-              ${item.is_alert ? '<span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 text-[10px] font-bold shrink-0">要確認</span>' : ''}
-            </div>
-          </a>
-        `).join('');
-        html += `
-          <div class="pt-2 space-y-2">
-            <div class="flex items-center justify-between">
-              <h3 class="text-xs font-bold text-slate-500">公式お知らせ・ブログ最新一覧</h3>
-              <a href="https://www.ogasawarakaiun.co.jp/" target="_blank" rel="noopener noreferrer" class="text-[11px] text-sky-700 underline">公式サイトトップへ</a>
-            </div>
-            ${listItems}
           </div>
         `;
       }
@@ -1091,9 +1104,13 @@
 
         let badge = '';
         if (ogamaru.role === 'arr') {
-          badge = '<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-bold">おが丸入港</span>';
+          badge = ogamaru.isChanged
+            ? `<span class="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold">おが丸入港 ${ogamaru.time}</span>`
+            : '<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-bold">おが丸入港</span>';
         } else if (ogamaru.role === 'dep') {
-          badge = '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">おが丸出港</span>';
+          badge = ogamaru.isChanged
+            ? `<span class="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold">おが丸出港 ${ogamaru.time}</span>`
+            : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">おが丸出港</span>';
         }
 
         let timeHtml = '';
@@ -1175,16 +1192,12 @@
     }
 
     function applyCurrentScenario() {
-      if (state.previewMode === 'alert_demo') {
-        state.scenario = 'alert_demo';
+      const data = state.liveData;
+      const ov = data && data.parsed_override;
+      if (data && ((data.alerts && data.alerts.length > 0) || ov)) {
+        state.scenario = 'live';
       } else {
-        const data = state.liveData;
-        const ov = data && data.parsed_override;
-        if (data && ((data.alerts && data.alerts.length > 0) || ov)) {
-          state.scenario = 'live';
-        } else {
-          state.scenario = 'none';
-        }
+        state.scenario = 'none';
       }
       renderHome();
       if (state.tab === 'calendar') renderCalendar();
@@ -1340,15 +1353,6 @@
       });
     }
 
-    function updatePreviewModeButtons() {
-      document.querySelectorAll('.preview-mode-btn').forEach(btn => {
-        const isSelected = btn.dataset.previewMode === state.previewMode;
-        btn.className = isSelected
-          ? 'preview-mode-btn px-2 py-2 rounded-xl text-xs font-extrabold border-2 border-slate-800 bg-slate-800 text-white transition text-center shadow-xs'
-          : 'preview-mode-btn px-2 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition text-center';
-      });
-    }
-
     document.querySelectorAll('.start-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const chosen = btn.dataset.startTab;
@@ -1361,18 +1365,8 @@
       });
     });
 
-    document.querySelectorAll('.preview-mode-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.previewMode = btn.dataset.previewMode;
-        updatePreviewModeButtons();
-        applyCurrentScenario();
-        showToast(state.previewMode === 'alert_demo' ? '変更ありプレビュー表示に切り替えました' : '実際の最新データ表示に戻しました');
-      });
-    });
-
     document.getElementById('openInfoModalBtn').addEventListener('click', () => {
       updateStartTabButtons();
-      updatePreviewModeButtons();
       renderArchiveTable();
       document.getElementById('infoModal').classList.remove('hidden');
       lucide.createIcons();
