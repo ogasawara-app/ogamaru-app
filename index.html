@@ -89,7 +89,7 @@
 
           <!-- Left: Previous Event -->
           <div id="prevEventBox" class="col-span-3 flex flex-col items-center justify-center px-1 py-2 rounded-2xl bg-slate-50/80 border border-slate-100">
-            <span class="text-xs font-semibold text-slate-400 mb-0.5">前回</span>
+            <span class="text-xs font-semibold text-slate-400 mb-0.5">前回予定</span>
             <span id="prevDate" class="text-base sm:text-lg font-bold text-slate-700 leading-tight">11月23日</span>
             <span id="prevWeekday" class="text-sm text-slate-500">(月)</span>
             <span id="prevTypeBadge" class="mt-1.5 inline-block px-2.5 py-0.5 rounded-md text-sm font-bold bg-amber-50 text-amber-700">出港</span>
@@ -98,7 +98,7 @@
 
           <!-- Center: Next Event (MAIN FOCUS) -->
           <div id="nextEventBox" class="col-span-6 flex flex-col items-center justify-center px-2 py-4 rounded-2xl bg-gradient-to-b from-sky-50/70 to-white border-2 border-sky-200 shadow-sm relative">
-            <span class="text-base font-bold tracking-widest text-sky-700 mb-1.5">次回</span>
+            <span class="text-base font-bold tracking-widest text-sky-700 mb-1.5">次回予定</span>
             <div class="flex items-baseline justify-center gap-1 flex-wrap">
               <span id="nextDate" class="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight leading-none whitespace-nowrap">11月28日</span>
               <span id="nextWeekday" class="text-lg sm:text-2xl font-bold text-slate-500">(土)</span>
@@ -119,7 +119,7 @@
 
           <!-- Right: Event After Next -->
           <div id="afterEventBox" class="col-span-3 flex flex-col items-center justify-center px-1 py-2 rounded-2xl bg-slate-50/80 border border-slate-100">
-            <span class="text-xs font-semibold text-slate-400 mb-0.5">その次</span>
+            <span class="text-xs font-semibold text-slate-400 mb-0.5">その次予定</span>
             <span id="afterDate" class="text-base sm:text-lg font-bold text-slate-700 leading-tight">12月1日</span>
             <span id="afterWeekday" class="text-sm text-slate-500">(火)</span>
             <span id="afterTypeBadge" class="mt-1.5 inline-block px-2.5 py-0.5 rounded-md text-sm font-bold bg-amber-50 text-amber-700">出港</span>
@@ -157,7 +157,7 @@
             <div class="min-w-0">
               <div class="flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
                 <span class="text-xs font-bold text-slate-600 shrink-0">おがさわら丸：</span>
-                <span id="ogaStatusMainText" class="text-sm font-extrabold text-emerald-950">通常運航</span>
+                <span id="ogaStatusMainText" class="text-sm font-extrabold text-amber-900">確認中</span>
               </div>
               <p id="ogaStatusDetailText" class="hidden text-xs text-rose-900 mt-0.5 leading-snug"></p>
             </div>
@@ -172,7 +172,7 @@
             <div class="min-w-0">
               <div class="flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
                 <span class="text-xs font-bold text-slate-600 shrink-0">ははじま丸：</span>
-                <span id="hahaStatusMainText" class="text-sm font-extrabold text-teal-950">通常運航</span>
+                <span id="hahaStatusMainText" class="text-sm font-extrabold text-amber-900">確認中</span>
               </div>
             </div>
           </div>
@@ -202,6 +202,7 @@
           </button>
         </div>
 
+        <p class="text-[11px] text-amber-800 mb-2">予定ダイヤ。欠航・日付変更は公式情報を確認してください。</p>
         <!-- Legend -->
         <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-600 mb-3">
           <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-sky-600"></span>入港</span>
@@ -254,12 +255,13 @@
           </select>
         </div>
 
+        <p class="text-[11px] text-amber-800 mb-2">以下は予定ダイヤです。実際の運航は公式情報をご確認ください。</p>
         <!-- Live Hahajima Status Banner -->
         <div id="hahaLiveBanner" class="mb-3 rounded-2xl bg-teal-50/80 border border-teal-200 px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
           <div class="flex items-center gap-2">
             <span id="hahaBannerDot" class="w-2 h-2 rounded-full bg-teal-600 shrink-0"></span>
             <span class="font-bold text-teal-950">運航状況：</span>
-            <span id="hahaBannerText" class="font-extrabold text-teal-800">通常運航</span>
+            <span id="hahaBannerText" class="font-extrabold text-amber-900">確認中</span>
           </div>
           <a href="https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/" target="_blank" rel="noopener noreferrer" class="text-[11px] text-teal-700 underline shrink-0">公式確認</a>
         </div>
@@ -493,7 +495,8 @@
       selectedDate: INITIAL_TODAY,
       hahaMonth: ((initY === 2026 && initM >= 11) || (initY === 2027 && initM <= 4)) ? `${initY}-${String(initM).padStart(2, '0')}` : '2026-11',
       hahaFilter: 'all',
-      liveData: null
+      liveData: null,
+      syncOK: false
     };
 
     function refreshCurrentDate() {
@@ -532,17 +535,42 @@
       return Math.round((b - a) / (1000 * 60 * 60 * 24));
     }
 
+    // Never equate a successful JSON download with a successful official-source check.
+    function dataFresh() {
+      const data = state.liveData;
+      const age = data ? (Date.now() - Date.parse(data.updated_iso)) / 60000 : NaN;
+      return state.syncOK && Number.isFinite(age) && age >= -5 && age <= 65;
+    }
+    function sourceOK(key) {
+      return dataFresh() && state.liveData.source_status?.[key] === 'ok';
+    }
+    function ogaConfirmed() {
+      return sourceOK('ogamaru_next') && sourceOK('ogamaru_info') &&
+        /^ogamaru_blog_feed(?:_http)?: ok \(\d+ items\)$/.test(state.liveData.source_status?.ogamaru_blog_feed || '');
+    }
+    function ogaNeedsCheck() {
+      const d = state.liveData;
+      return !ogaConfirmed() || Boolean(d?.alerts?.length || /欠航|運休|変更|遅延|繰り上げ|繰り下げ|未定|条件付|延発|抜港/.test(d?.next_summary || ''));
+    }
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function explicitCancellation(date, type) {
+      return state.liveData?.schema_version === 2 && Array.isArray(state.liveData.cancellations) &&
+        state.liveData.cancellations.some(c => c.target_date === date && c.type === type);
+    }
     function getActiveOverridesMap() {
       const map = {};
-      if (state.liveData && Array.isArray(state.liveData.persisted_overrides)) {
+      if (state.liveData?.schema_version === 2 && Array.isArray(state.liveData.persisted_overrides)) {
         for (const item of state.liveData.persisted_overrides) {
-          if (item && item.target_date && item.type && item.new_time) {
+          if (item && /^\d{4}-\d{2}-\d{2}$/.test(item.target_date) && ['arr','dep'].includes(item.type) && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(item.new_time)) {
             map[`${item.target_date}_${item.type}`] = item.new_time;
           }
         }
       }
       const activeChange = SCENARIOS[state.scenario];
-      if (activeChange && activeChange.targetDate && activeChange.type && activeChange.newTime) {
+      if (state.liveData?.schema_version === 2 && activeChange && activeChange.targetDate && activeChange.type && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(activeChange.newTime)) {
         map[`${activeChange.targetDate}_${activeChange.type}`] = activeChange.newTime;
       }
       return map;
@@ -557,12 +585,13 @@
         const ovArr = overrides[`${v.chichiArr}_arr`];
         if (ovArr) {
           arrTime = ovArr;
-          arrChanged = true;
+          arrChanged = ovArr !== v.arrTime;
         }
         events.push({
           date: v.chichiArr,
           type: 'arr',
           label: '入港',
+          cancelled: explicitCancellation(v.chichiArr, 'arr'),
           time: arrTime,
           isChanged: arrChanged,
           voyage: v
@@ -573,12 +602,13 @@
         const ovDep = overrides[`${v.chichiDep}_dep`];
         if (ovDep) {
           depTime = ovDep;
-          depChanged = true;
+          depChanged = ovDep !== v.depTime;
         }
         events.push({
           date: v.chichiDep,
           type: 'dep',
           label: '出港',
+          cancelled: explicitCancellation(v.chichiDep, 'dep'),
           time: depTime,
           isChanged: depChanged,
           voyage: v
@@ -594,7 +624,7 @@
       for (const v of BASE_VOYAGES) {
         if (v.chichiArr === dateStr) {
           const ovArr = overrides[`${dateStr}_arr`];
-          ogamaru = { role: 'arr', label: '父島入港', time: ovArr || v.arrTime, isChanged: Boolean(ovArr), voyage: v };
+          ogamaru = { role: 'arr', label: '父島入港', time: ovArr || v.arrTime, isChanged: Boolean(ovArr && ovArr !== v.arrTime), voyage: v };
           break;
         }
         if (v.stayDates.includes(dateStr)) {
@@ -603,7 +633,7 @@
         }
         if (v.chichiDep === dateStr) {
           const ovDep = overrides[`${dateStr}_dep`];
-          ogamaru = { role: 'dep', label: '父島出港', time: ovDep || v.depTime, isChanged: Boolean(ovDep) || Boolean(v.depChanged), voyage: v };
+          ogamaru = { role: 'dep', label: '父島出港', time: ovDep || v.depTime, isChanged: ovDep ? ovDep !== v.depTime : Boolean(v.depChanged), voyage: v };
           break;
         }
         if (v.tokyoDep === dateStr) {
@@ -613,7 +643,9 @@
 
       // Hahajima Maru
       let haha = { status: 'regular', out: '7:30 → 9:30', back: '14:00 → 16:00', note: '' };
-      if (HAHAJIMA_REST_DAYS.has(dateStr)) {
+      if (dateStr < '2026-11-01' || dateStr > '2027-04-30') {
+        haha = { status: 'unknown', out: '', back: '', note: 'ダイヤ未収録' };
+      } else if (HAHAJIMA_REST_DAYS.has(dateStr)) {
         haha = { status: 'rest', out: '', back: '', note: '運休日' };
       } else if (HAHAJIMA_SPECIAL[dateStr]) {
         haha = { status: 'special', ...HAHAJIMA_SPECIAL[dateStr] };
@@ -631,6 +663,7 @@
         }
       }
 
+      ogamaru.cancelled = explicitCancellation(dateStr, ogamaru.role);
       return { ogamaru, haha };
     }
 
@@ -655,7 +688,7 @@
           return nowTime < '15:00' ? '航海中（父島 → 東京）' : '東京（竹芝）停泊中';
         }
       }
-      return '東京（竹芝）停泊中';
+      return dateStr < BASE_VOYAGES[0].tokyoDep || dateStr > BASE_VOYAGES.at(-1).tokyoArr ? '予定ダイヤ未収録' : '東京（竹芝）停泊中';
     }
 
     // =========================================================================
@@ -676,22 +709,23 @@
 
       const activeChange = SCENARIOS[state.scenario];
       const hasOgaAlert = Boolean(activeChange);
+      const ogaUnknown = !ogaConfirmed();
 
       // Hahajima live status from JSON
       const hahaStatusObj = state.liveData && state.liveData.hahajima_status;
       let hahaStatusStr = '確認不能';
-      if (hahaStatusObj && hahaStatusObj.status) {
+      if (sourceOK('hahajima_status') && hahaStatusObj && hahaStatusObj.status) {
         hahaStatusStr = hahaStatusObj.status;
       }
 
       const isHahaNormal = hahaStatusStr === '通常運航';
-      const isHahaAlert = (hahaStatusObj && hahaStatusObj.is_alert === 'true')
+      const isHahaAlert = (sourceOK('hahajima_status') && hahaStatusObj && hahaStatusObj.is_alert === 'true')
         || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaStatusStr);
 
       if (hasOgaAlert || isHahaAlert) {
         box.className = 'rounded-2xl bg-rose-50/90 border-2 border-rose-300 px-4 py-3 shadow-xs space-y-2';
         if (hahaDivider) hahaDivider.className = 'flex items-start justify-between gap-2 pt-2 border-t border-rose-200/80';
-      } else if (!isHahaNormal) {
+      } else if (!isHahaNormal || ogaUnknown) {
         box.className = 'rounded-2xl bg-amber-50/80 border border-amber-300/80 px-4 py-3 shadow-xs space-y-2';
         if (hahaDivider) hahaDivider.className = 'flex items-start justify-between gap-2 pt-2 border-t border-amber-200/80';
       } else {
@@ -701,7 +735,7 @@
 
       if (hasOgaAlert) {
         ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 mt-1.5 animate-pulse';
-        ogaText.textContent = activeChange.title || '運航変更あり';
+        ogaText.textContent = (ogaUnknown ? '未確認・前回情報：' : '要確認：') + (activeChange.title || '運航変更あり');
         ogaText.className = 'text-sm font-extrabold text-rose-950';
         if (activeChange.desc) {
           ogaDetailText.textContent = activeChange.desc;
@@ -711,16 +745,30 @@
           ogaDetailText.classList.add('hidden');
         }
         ogaDetailBtn.classList.remove('hidden');
+      } else if (ogaUnknown) {
+        ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 mt-1.5';
+        ogaText.textContent = '確認不能（一部情報未取得）';
+        ogaText.className = 'text-sm font-bold text-amber-900';
+        ogaDetailText.textContent = '公式サイトで最新情報を確認してください。';
+        ogaDetailText.classList.remove('hidden');
+        ogaDetailBtn.classList.add('hidden');
       } else {
         ogaDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0 mt-1.5';
-        ogaText.textContent = '通常運航';
+        ogaText.textContent = '変更情報なし（取得範囲内）';
         ogaText.className = 'text-sm font-extrabold text-emerald-950';
         ogaDetailText.textContent = '';
         ogaDetailText.classList.add('hidden');
         ogaDetailBtn.classList.add('hidden');
       }
 
-      if (isHahaNormal) {
+      if (hahaStatusStr === '運航なし') {
+        hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-slate-500 shrink-0 mt-1.5';
+        hahaText.textContent = '運航なし';
+        hahaText.className = 'text-sm font-bold text-slate-700';
+        if (hahaBannerText) { hahaBannerText.textContent = '運航なし'; hahaBannerText.className = 'font-bold text-slate-700'; }
+        if (hahaBanner) hahaBanner.className = 'mb-3 rounded-2xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs';
+        if (hahaBannerDot) hahaBannerDot.className = 'w-2 h-2 rounded-full bg-slate-500 shrink-0';
+      } else if (isHahaNormal) {
         hahaDot.className = 'w-2.5 h-2.5 rounded-full bg-teal-600 shrink-0 mt-1.5';
         hahaText.textContent = '通常運航';
         hahaText.className = 'text-sm font-extrabold text-teal-950';
@@ -755,21 +803,32 @@
 
     function renderHome() {
       refreshCurrentDate();
-      const events = getEventsList();
+      const events = getEventsList().filter(e => !e.cancelled);
       const today = state.simDate;
       const nowTime = getJstTimeStr();
       const nowDateTime = `${today} ${nowTime}`;
 
       // Find next event using BOTH date and time
       let nextIdx = events.findIndex(e => `${e.date} ${e.time}` > nowDateTime);
-      if (nextIdx === -1) nextIdx = events.length - 1;
+      if (nextIdx === -1) nextIdx = events.length;
       const prevEvt = nextIdx > 0 ? events[nextIdx - 1] : null;
       const nextEvt = events[nextIdx];
       const afterEvt = nextIdx < events.length - 1 ? events[nextIdx + 1] : null;
 
       // Today's Date & Ship Status Badge
       document.getElementById('homeTodayDate').textContent = `${fmtDateShort(today)}${fmtWeekday(today)}`;
-      document.getElementById('shipStatusText').textContent = getShipStatus(today);
+      document.getElementById('shipStatusText').textContent = ogaNeedsCheck() ? '運航状況は公式確認が必要です' : '予定上：' + getShipStatus(today);
+      document.getElementById('nextEventBox').classList.toggle('opacity-60', ogaNeedsCheck());
+      document.getElementById('prevEventBox').classList.toggle('invisible', !prevEvt);
+      document.getElementById('afterEventBox').classList.toggle('invisible', !afterEvt);
+      document.getElementById('touristSubPanel').classList.toggle('hidden', !nextEvt);
+      if (!nextEvt) {
+        for (const id of ['nextDate','nextWeekday','nextTimeNormal','nextTimeChanged']) document.getElementById(id).textContent = '';
+        document.getElementById('nextTypeBadge').textContent = '未収録';
+        document.getElementById('nextCountdown').textContent = '公式時刻表を確認';
+        renderOperationStatus();
+        return;
+      }
 
       // Left (Prev)
       if (prevEvt) {
@@ -812,11 +871,11 @@
         const defaultT = nextEvt.type === 'arr' ? '11:00' : '15:00';
         normalTimeEl.classList.add('hidden');
         changedTimeEl.classList.remove('hidden');
-        changedTimeEl.textContent = `変更 ${nextEvt.time}（通常${defaultT}）`;
+        changedTimeEl.textContent = `変更 ${nextEvt.time}${ogaNeedsCheck() ? "・要確認" : ""}`;
       } else {
         normalTimeEl.classList.remove('hidden');
         changedTimeEl.classList.add('hidden');
-        normalTimeEl.textContent = `通常 ${nextEvt.time}`;
+        normalTimeEl.textContent = `予定 ${nextEvt.time}${ogaNeedsCheck() ? "・要確認" : ""}`;
       }
 
       // Right (After Next)
@@ -846,14 +905,14 @@
       document.getElementById('touristTokyoDep').textContent = `${fmtDateShort(v.tokyoDep)}${fmtWeekday(v.tokyoDep)} 11:00`;
       document.getElementById('touristStayNights').textContent = `${v.stayDates.length + 1}泊${v.stayDates.length + 2}日`;
       const arrHaha = getDayInfo(v.chichiArr).haha;
-      document.getElementById('touristHahajimaConn').textContent = arrHaha.out ? `${fmtDateShort(v.chichiArr)} ${arrHaha.out.split(' ')[0]}発` : '運休';
+      document.getElementById('touristHahajimaConn').textContent = arrHaha.out ? `${fmtDateShort(v.chichiArr)} ${arrHaha.out.split(' ')[0]}発（予定）` : (arrHaha.status === 'unknown' ? '未収録' : '便なし（予定）');
 
       renderOperationStatus();
 
       // Bottom nav dot indicator
       const activeChange = SCENARIOS[state.scenario];
       const navDot = document.getElementById('navChangeDot');
-      const hahaObjHome = state.liveData && state.liveData.hahajima_status;
+      const hahaObjHome = sourceOK('hahajima_status') && state.liveData.hahajima_status;
       const hasHahaAlertHome = Boolean(hahaObjHome && hahaObjHome.status && hahaObjHome.status !== '通常運航' && hahaObjHome.status !== '確認不能' && (hahaObjHome.is_alert === 'true' || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaObjHome.status)));
 
       if (activeChange || hasHahaAlertHome) {
@@ -908,6 +967,7 @@
           tagHtml = `<span class="mt-1 text-[8px] sm:text-[9px] font-semibold text-sky-700 whitespace-nowrap">父島泊</span>`;
         }
 
+        if (info.ogamaru.cancelled) tagHtml = '<span class="mt-0.5 px-1.5 rounded text-[10px] font-bold bg-rose-700 text-white">欠航情報</span>';
         const todayDot = isToday ? `<span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500" title="今日"></span>` : '';
 
         btn.innerHTML = `
@@ -917,7 +977,7 @@
         `;
         btn.addEventListener('click', () => {
           state.selectedDate = dateStr;
-          if (isOutsideMonth) {
+          if (isOutsideMonth && dateStr >= '2026-11-01' && dateStr <= '2027-04-30') {
             state.calYear = cy;
             state.calMonth = cm;
           }
@@ -964,8 +1024,11 @@
         ogBadge = '<span class="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[11px] font-bold">東京発</span>';
       }
 
+      if (og.cancelled) { ogText = '欠航情報あり（公式確認）'; ogBadge = '<span class="text-xs font-bold text-rose-700">欠航情報</span>'; }
       let haHtml = '';
-      if (ha.status === 'rest') {
+      if (ha.status === 'unknown') {
+        haHtml = 'ダイヤ未収録';
+      } else if (ha.status === 'rest') {
         haHtml = '<span class="text-slate-400 font-medium">運休日</span>';
       } else {
         const parts = [];
@@ -982,7 +1045,7 @@
         <div class="pt-3 space-y-2.5 text-xs sm:text-sm">
           <div class="flex items-start gap-2.5">
             <span class="font-bold text-sky-800 w-24 shrink-0">おがさわら丸</span>
-            <span class="text-slate-700">${ogText}</span>
+            <span class="text-slate-700">${ogText}${ogaNeedsCheck() && state.selectedDate >= state.simDate ? ' <strong class="text-amber-700">（要公式確認）</strong>' : '（予定）'}</span>
           </div>
           <div class="flex items-start gap-2.5">
             <span class="font-bold text-teal-800 w-24 shrink-0">ははじま丸</span>
@@ -1000,7 +1063,7 @@
 
       // Upcoming changed events & Hahajima concise alert
       const upcomingChanges = getEventsList().filter(ev => ev.isChanged && ev.date >= today);
-      const hahaObj = state.liveData && state.liveData.hahajima_status;
+      const hahaObj = sourceOK('hahajima_status') && state.liveData.hahajima_status;
       const hahaAlertText = (hahaObj && hahaObj.status && hahaObj.status !== '通常運航' && hahaObj.status !== '確認不能' && (hahaObj.is_alert === 'true' || /欠航|運休|変更|繰り上げ|繰り下げ|条件付|遅延|延発|抜港/.test(hahaObj.status)))
         ? hahaObj.status
         : '';
@@ -1012,7 +1075,7 @@
             <div class="rounded-2xl bg-rose-50 border border-rose-300 p-4 flex items-center justify-between gap-2">
               <div class="space-y-0.5">
                 <div class="text-[11px] font-extrabold text-rose-700">ははじま丸</div>
-                <div class="text-sm font-extrabold text-rose-950">${hahaAlertText}</div>
+                <div class="text-sm font-extrabold text-rose-950">${escapeHtml(hahaAlertText)}</div>
               </div>
               <a href="https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-rose-700 underline shrink-0">公式確認</a>
             </div>
@@ -1047,10 +1110,10 @@
             <div class="rounded-2xl bg-rose-50/70 border border-rose-200 p-4">
               <div class="flex items-center justify-between text-[11px] text-rose-700 font-bold mb-1">
                 <span>公式発表</span>
-                <span>${activeChange.updatedAt}</span>
+                <span>${escapeHtml(activeChange.updatedAt)}</span>
               </div>
-              <div class="text-sm font-bold text-rose-950">${activeChange.title}</div>
-              <p class="text-xs text-rose-900 mt-1 leading-relaxed">${activeChange.desc}</p>
+              <div class="text-sm font-bold text-rose-950">${escapeHtml(activeChange.title)}</div>
+              <p class="text-xs text-rose-900 mt-1 leading-relaxed">${escapeHtml(activeChange.desc)}</p>
             </div>
           `;
         }
@@ -1059,15 +1122,18 @@
           <div class="rounded-2xl bg-emerald-50/70 border border-emerald-200 p-4 flex items-center gap-3">
             <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 shrink-0"></i>
             <div class="text-xs text-emerald-900">
-              <div class="font-bold">通常運航</div>
-              <div class="text-emerald-700 mt-0.5">入港 11:00 ／ 出港 15:00（予定通り）</div>
+              <div class="font-bold">${ogaConfirmed() && sourceOK('hahajima_status') ? "取得範囲内で変更情報なし" : "最新情報を確認できません"}</div>
+              <div class="mt-0.5">実際の運航は公式サイトでご確認ください。</div>
             </div>
           </div>
         `;
       }
 
+      if (ogaNeedsCheck() || !sourceOK('hahajima_status')) {
+        html = '<p class="text-xs text-amber-800 bg-amber-50 p-3 rounded-xl">未確認または変更情報あり。欠航・日付変更は予定表に自動反映されない場合があります。公式情報をご確認ください。</p>' + html;
+      }
       feed.innerHTML = html;
-      lucide.createIcons();
+      window.lucide?.createIcons();
     }
 
     function renderHahajima() {
@@ -1191,7 +1257,7 @@
     function applyCurrentScenario() {
       const data = state.liveData;
       const ov = data && data.parsed_override;
-      if (data && ((data.alerts && data.alerts.length > 0) || ov)) {
+      if (data && SCENARIOS.live) {
         state.scenario = 'live';
       } else {
         state.scenario = 'none';
@@ -1220,29 +1286,16 @@
         const resp = await fetch(`./schedule_data.json?t=${Date.now()}`, { cache: 'no-store' });
         if (!resp.ok) throw new Error('not_found');
         const data = await resp.json();
+        if (!data || !Array.isArray(data.alerts) || !data.source_status || !Number.isFinite(Date.parse(data.updated_iso))) throw new Error('invalid_data');
         state.liveData = data;
-
-        // Freshness check: daytime (06:00-21:00 JST) warns after 1 hour; nighttime skips stale alert
-        let isStale = false;
-        const jstHour = getJstHour();
-        const isDaytime = jstHour >= 6 && jstHour < 21;
-        if (data.updated_iso && isDaytime) {
-          const ageMinutes = (Date.now() - Date.parse(data.updated_iso)) / (1000 * 60);
-          if (!Number.isNaN(ageMinutes) && ageMinutes > 65) {
-            isStale = true;
-          }
-        }
+        state.syncOK = resp.headers.get('X-Ogamaru-Offline') !== '1';
         if (warnEl) {
-          if (isStale) {
-            warnEl.textContent = `※日中1時間以上更新が確認できていません（最終確認: ${data.updated_at || ''}）`;
-            warnEl.classList.remove('hidden');
-          } else {
-            warnEl.classList.add('hidden');
-          }
+          warnEl.textContent = `※最新情報を確認できません（最終取得: ${data.updated_at || '不明'}）`;
+          warnEl.classList.toggle('hidden', ogaConfirmed() && sourceOK('hahajima_status'));
         }
 
-        const ov = data.parsed_override;
-        if ((data.alerts && data.alerts.length > 0) || ov) {
+        const ov = data.schema_version === 2 ? data.parsed_override : null;
+        if ((data.alerts && data.alerts.length > 0) || ov || /欠航|運休|変更|遅延|繰り上げ|繰り下げ|未定|条件付|延発|抜港/.test(data.next_summary || '')) {
           const topAlert = (data.alerts && data.alerts[0]) || null;
           SCENARIOS.live = {
             id: 'live',
@@ -1250,7 +1303,7 @@
             type: ov ? ov.type : '',
             newTime: ov ? ov.new_time : '',
             oldTime: '',
-            title: topAlert ? topAlert.title : `${ov.target_date} 運航時刻変更のお知らせ`,
+            title: topAlert ? topAlert.title : (ov ? `${ov.target_date} 運航時刻変更のお知らせ` : '運航変更・欠航情報（要確認）'),
             desc: data.next_summary || '公式サイトで詳細をご確認ください。',
             updatedAt: data.updated_at || '最新'
           };
@@ -1259,23 +1312,24 @@
         }
         applyCurrentScenario();
       } catch (err) {
+        state.syncOK = false;
         if (warnEl) {
           warnEl.textContent = '※最新情報の取得を確認できていません（予定ダイヤを表示中）';
           warnEl.classList.remove('hidden');
         }
-        renderOperationStatus();
+        applyCurrentScenario();
       }
     }
 
     document.getElementById('calPrevMonth').addEventListener('click', () => {
-      if (state.calYear === 2026 && state.calMonth === 11) return;
+      if (state.calYear * 12 + state.calMonth <= 2026 * 12 + 11) return;
       state.calMonth--;
       if (state.calMonth < 1) { state.calMonth = 12; state.calYear--; }
       renderCalendar();
     });
 
     document.getElementById('calNextMonth').addEventListener('click', () => {
-      if (state.calYear === 2027 && state.calMonth === 4) return;
+      if (state.calYear * 12 + state.calMonth >= 2027 * 12 + 4) return;
       state.calMonth++;
       if (state.calMonth > 12) { state.calMonth = 1; state.calYear++; }
       renderCalendar();
@@ -1295,7 +1349,7 @@
 
     function renderArchiveTable() {
       const container = document.getElementById('archiveTableContainer');
-      const events = getEventsList().filter(ev => ev.date <= state.simDate);
+      const events = getEventsList().filter(ev => ev.date < state.simDate);
       const byMonth = {};
       for (const ev of events) {
         const ym = ev.date.slice(0, 7);
@@ -1305,7 +1359,7 @@
 
       const months = Object.keys(byMonth).sort();
       container.className = 'max-h-56 overflow-y-auto space-y-2.5 text-xs';
-      container.innerHTML = months.map((ym, idx) => {
+      container.innerHTML = '<p class="text-xs text-amber-700">収録済みの過去の予定ダイヤです。実際の入出港実績ではありません。</p>' + months.map((ym, idx) => {
         const [y, m] = ym.split('-').map(Number);
         const list = byMonth[ym];
         const chgCount = list.filter(e => e.isChanged).length;
@@ -1366,7 +1420,7 @@
       updateStartTabButtons();
       renderArchiveTable();
       document.getElementById('infoModal').classList.remove('hidden');
-      lucide.createIcons();
+      window.lucide?.createIcons();
     });
     document.getElementById('closeInfoModalBtn').addEventListener('click', () => {
       document.getElementById('infoModal').classList.add('hidden');
@@ -1383,7 +1437,7 @@
     });
 
     // Init
-    lucide.createIcons();
+    window.lucide?.createIcons();
     renderHome();
     try {
       const savedStartTab = localStorage.getItem('ogamaru_start_tab');
@@ -1395,6 +1449,8 @@
     setInterval(() => {
       refreshCurrentDate();
       if (state.tab === 'home') renderHome();
+      else if (state.tab === 'changes') renderChanges();
+      else if (state.tab === 'hahajima') renderOperationStatus();
     }, 60 * 1000);
     setInterval(syncScheduleData, 10 * 60 * 1000);
 

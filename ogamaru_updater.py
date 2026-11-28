@@ -114,7 +114,7 @@ def parse_ogamaru_blog_atom(xml_text: str) -> Tuple[List[Dict[str, Any]], Option
     except ET.ParseError as e:
         return items, f"xml_parse_error: {e}"
 
-    ns = {"atom": "http://www.w3.org/2005/Atom"}
+    ns = {"atom": root.tag.split("}")[0][1:] if root.tag.startswith("{") else "http://www.w3.org/2005/Atom"}
     entries = root.findall("atom:entry", ns) or root.findall("entry")
     if not entries:
         return items, f"no_entry_elements_found (root_tag={root.tag})"
@@ -144,7 +144,7 @@ def parse_ogamaru_blog_atom(xml_text: str) -> Tuple[List[Dict[str, Any]], Option
             "is_alert": len(matched) > 0,
             "matched_keywords": matched,
         })
-    return items, None
+    return (items, None) if items else (items, "no_valid_entries")
 
 
 def strip_umisora_boilerplate(text: str) -> str:
@@ -163,7 +163,7 @@ def strip_umisora_boilerplate(text: str) -> str:
         r"\[?\s*条件付就航\s*[・･]\s*その他情報あり\s*\]?",
         r"\[?\s*欠航\s*[・･]\s*運休\s*\]?",
         r"\[?\s*運航\s*\(\s*予定\s*\)\s*\]?",
-        r"\[?\s*ー\s*本日の運航なし\s*\]?",
+
     ]
     for pat in legend_patterns:
         cleaned = re.sub(pat, " ", cleaned)
@@ -240,75 +240,93 @@ def parse_hahajima_status(html: str) -> Dict[str, str]:
             summary = summary[:39].rstrip() + "…"
         return {"status": summary, "is_alert": "true", "source_url": SOURCES["hahajima_status"]}
 
-    if has_normal_tag or re.search(r"(通常運航|運航)", plain_remarks):
+    if any(re.search(r"運航なし|運航無し|運休日", t) for t in icon_tags) or re.search(r"運航なし|運航無し|運休日", plain_remarks):
+        return {"status": "一部運航・要確認" if has_normal_tag else "運航なし", "is_alert": "false", "source_url": SOURCES["hahajima_status"]}
+
+    if has_normal_tag or re.fullmatch(r"通常運航|運航", plain_remarks):
         return {"status": "通常運航", "is_alert": "false", "source_url": SOURCES["hahajima_status"]}
 
     return {"status": "確認不能", "is_alert": "false", "source_url": SOURCES["hahajima_status"]}
 
 
+# Only accept dates, ports and times in the same clause. Do not guess a voyage
+# from a blog headline, a Tokyo time, or a multi-date free-form notice.
+DATE_RE = r"(?:(\d{4})年\s*)?(\d{1,2})[/月]\s*(\d{1,2})日?(?:\s*[（(][^）)]{1,4}[）)])?"
+TIME_RE = r"(\d{1,2})\s*[:時]\s*(\d{2})分?"
+
+def resolve_date(year, month, day, now_jst):
+    try:
+        if year:
+            return datetime(int(year), int(month), int(day)).date().isoformat()
+        candidates = []
+        for y in (now_jst.year-1, now_jst.year, now_jst.year+1):
+            try: candidates.append(datetime(y, int(month), int(day)).date())
+            except ValueError: pass
+        if not candidates: return None
+        return min(candidates, key=lambda d: abs((d-now_jst.date()).days)).isoformat()
+    except ValueError:
+        return None
+
+
+def extract_schedule_updates(text: str, now_jst: datetime) -> List[Dict[str, str]]:
+    results = {}
+    dates = list(re.finditer(DATE_RE, text))
+    for i, m in enumerate(dates):
+        clause = text[m.end():dates[i+1].start() if i+1 < len(dates) else len(text)]
+        clause = re.split(r"[。\n]", clause)[0]
+        # Official next-sailing format: 12/1(火) 父島 15時00分発
+        direct = re.match(r"\s*(?:の\s*)?父島\s*" + TIME_RE + r"\s*(発|着|出港|入港)", clause)
+        # Explicit change/restoration format: 12月1日の父島出港時刻を15時00分から13時00分に変更
+        change = re.match(r"\s*(?:の\s*)?父島\s*(出港|入港)(?:時刻)?(?:を|は|が)?\s*(.*)", clause)
+        if direct:
+            hour, minute, kind = direct.groups()
+            if re.search(r"欠航|運休|未定|中止|変更の可能性|予定を変更", clause):
+                continue
+        elif change:
+            kind, tail = change.groups()
+            if not re.search(r"変更|繰り上げ|繰り下げ|延発|遅延|戻|復旧", tail) or re.search(r"欠航|運休|未定|可能性|場合|検討", tail):
+                continue
+            times = re.findall(TIME_RE, tail)
+            after = re.search(r"(?:から|→|⇒)\s*" + TIME_RE, tail)
+            if after and len(times) == 2:
+                hour, minute = after.groups()
+            elif len(times) == 1:
+                hour, minute = times[0]
+            else:
+                continue
+        else:
+            continue
+        date = resolve_date(*m.groups(), now_jst)
+        if not date or int(hour) > 23 or int(minute) > 59:
+            continue
+        kind = "dep" if kind in ("発", "出港") else "arr"
+        results[(date, kind)] = {"target_date": date, "type": kind, "new_time": f"{int(hour):02d}:{int(minute):02d}"}
+    return list(results.values())
+
+
+def extract_cancellations(text, now_jst):
+    results = []
+    for m in re.finditer(DATE_RE + r"\s*(?:の\s*)?父島\s*(出港|入港)(?:便|予定)?(?:は|を|が)?\s*(?:欠航|運休)(?:です|します|となります|決定|。|$)", text):
+        date = resolve_date(*m.groups()[:3], now_jst)
+        if date:
+            results.append({"target_date": date, "type": "dep" if m.group(4) == "出港" else "arr"})
+    return results
+
+
 def extract_schedule_override(text: str, now_jst: datetime) -> Optional[Dict[str, str]]:
-    if not any(kw in text for kw in ["変更", "遅延", "繰り上げ", "繰り下げ", "延発", "早め"]):
-        return None
-
-    m_date = re.search(r"(\d{1,2})[/月](\d{1,2})日?", text)
-    if not m_date:
-        return None
-
-    m_after = re.search(r"(?:から|→|⇒|へ)\s*(\d{1,2})[:時](\d{2})分?", text)
-    all_times = re.findall(r"(\d{1,2})[:時](\d{2})分?", text)
-
-    if m_after:
-        hour, minute = int(m_after.group(1)), int(m_after.group(2))
-    elif len(all_times) == 1:
-        hour, minute = int(all_times[0][0]), int(all_times[0][1])
-    else:
-        return None
-
-    month, day = int(m_date.group(1)), int(m_date.group(2))
-    year = now_jst.year
-    if month < now_jst.month - 6:
-        year += 1
-
-    target_date = f"{year}-{month:02d}-{day:02d}"
-    new_time = f"{hour:02d}:{minute:02d}"
-
-    evt_type = ""
-    if any(k in text for k in ["入港", "着"]):
-        evt_type = "arr"
-    elif any(k in text for k in ["出港", "発"]):
-        evt_type = "dep"
-
-    if not evt_type:
-        return None
-
-    if (evt_type == "arr" and new_time == "11:00") or (evt_type == "dep" and new_time == "15:00"):
-        return None
-
-    return {
-        "target_date": target_date,
-        "type": evt_type,
-        "new_time": new_time,
-    }
+    updates = extract_schedule_updates(text, now_jst)
+    changed = [u for u in updates if u["new_time"] != ("11:00" if u["type"] == "arr" else "15:00")]
+    return changed[0] if changed else None
 
 
-def merge_persisted_overrides(
-    existing: List[Dict[str, str]],
-    new_override: Optional[Dict[str, str]],
-    today_str: str,
-) -> List[Dict[str, str]]:
-    by_key: Dict[Tuple[str, str], Dict[str, str]] = {}
-    for item in existing:
-        if isinstance(item, dict) and item.get("target_date") and item.get("type") and item.get("new_time"):
-            by_key[(item["target_date"], item["type"])] = {
-                "target_date": item["target_date"],
-                "type": item["type"],
-                "new_time": item["new_time"],
-            }
-    if new_override:
-        by_key[(new_override["target_date"], new_override["type"])] = dict(new_override)
-
-    merged = sorted(by_key.values(), key=lambda x: (x["target_date"], x["type"]))
-    return merged[-50:]
+def merge_persisted_overrides(existing, new_override, today_str):
+    # Explicit normal times supersede earlier changes; no inferred restoration.
+    updates = new_override if isinstance(new_override, list) else ([new_override] if new_override else [])
+    by_key = {}
+    for item in list(existing) + updates:
+        if isinstance(item, dict) and item.get("target_date") and item.get("type") in ("arr", "dep") and item.get("new_time"):
+            by_key[(item["target_date"], item["type"])] = dict(item)
+    return sorted(by_key.values(), key=lambda x: (x["target_date"], x["type"]))
 
 
 def compute_fingerprint(data: Dict[str, Any]) -> str:
@@ -318,6 +336,8 @@ def compute_fingerprint(data: Dict[str, Any]) -> str:
         "hahajima_status": data.get("hahajima_status"),
         "parsed_override": data.get("parsed_override"),
         "persisted_overrides": data.get("persisted_overrides"),
+        "source_status": data.get("source_status"),
+        "cancellations": data.get("cancellations"),
     }
     serialized = json.dumps(comparable, ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
@@ -434,20 +454,27 @@ def main() -> int:
         try:
             prev_data = json.loads(out_path.read_text(encoding="utf-8"))
             prev_fingerprint = prev_data.get("fingerprint")
-            existing_overrides = prev_data.get("persisted_overrides") or []
+            existing_overrides = (prev_data.get("persisted_overrides") or []) if prev_data.get("schema_version") == 2 else []
         except Exception:
             prev_fingerprint = None
 
     source_status: Dict[str, str] = {}
 
-    try:
-        next_html = fetch_html(SOURCES["ogamaru_next"])
-        source_status["ogamaru_next"] = "ok"
-        info_html = fetch_html(SOURCES["ogamaru_info"])
-        source_status["ogamaru_info"] = "ok"
-    except (URLError, HTTPError) as e:
-        print(f"[ERROR] 小笠原海運公式サイトの取得に失敗しました: {e}", file=sys.stderr)
-        return 1
+    next_summary = ""
+    info_items = []
+    for key, parser_fn in (("ogamaru_next", parse_ogamaru_next), ("ogamaru_info", parse_ogamaru_info)):
+        try:
+            parsed = parser_fn(fetch_html(SOURCES[key]))
+            if key == "ogamaru_next":
+                next_summary = parsed
+                valid = bool(re.search(DATE_RE, parsed) and re.search(r"おがさわら丸|父島", parsed) and re.search(r"発|着|欠航|運休|変更|未定", parsed))
+            else:
+                info_items = parsed
+                valid = bool(parsed)
+            source_status[key] = "ok" if valid else "parse_uncertain"
+        except Exception as e:
+            source_status[key] = f"error: {e}"
+            print(f"[WARN] {key}: {e}", file=sys.stderr)
 
     try:
         haha_html = fetch_html(SOURCES["hahajima_status"])
@@ -476,13 +503,15 @@ def main() -> int:
             print(f"[WARN] 公式ブログフィード取得失敗 ({blog_debug})", file=sys.stderr)
     source_status["ogamaru_blog_feed"] = blog_debug
 
-    next_summary = parse_ogamaru_next(next_html)
-    info_items = parse_ogamaru_info(info_html) + blog_items
+    info_items += blog_items
     alerts = [item for item in info_items if item["is_alert"]]
-    parsed_override = extract_schedule_override(next_summary, now_jst)
-    persisted_overrides = merge_persisted_overrides(existing_overrides, parsed_override, now_jst.strftime("%Y-%m-%d"))
+    updates = extract_schedule_updates(next_summary, now_jst) if source_status["ogamaru_next"] == "ok" else []
+    parsed_override = extract_schedule_override(next_summary, now_jst) if updates else None
+    persisted_overrides = merge_persisted_overrides(existing_overrides, updates, now_jst.strftime("%Y-%m-%d"))
 
     new_data = {
+        "schema_version": 2,
+        "cancellations": extract_cancellations(next_summary, now_jst) if source_status["ogamaru_next"] == "ok" else [],
         "updated_at": now_jst.strftime("%Y-%m-%d %H:%M JST"),
         "updated_iso": now_jst.isoformat(),
         "next_summary": next_summary,
@@ -498,7 +527,9 @@ def main() -> int:
     new_data["fingerprint"] = new_fingerprint
 
     changed = new_fingerprint != prev_fingerprint
-    out_path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    temp_path = out_path.with_suffix(out_path.suffix + ".tmp")
+    temp_path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    temp_path.replace(out_path)
     print(f"[INFO] {out_path} を保存しました (changed={changed}, alerts={len(alerts)}, blog={len(blog_items)}, haha={haha_status['status']})")
 
     if changed:
