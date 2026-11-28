@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-11-28 09:46 JST",
-  "updated_iso": "2026-11-28T09:46:21.939405+09:00",
+  "updated_at": "2026-11-28 11:31 JST",
+  "updated_iso": "2026-11-28T11:31:10.948121+09:00",
   "next_summary": "次のおがさわら丸の運航は、11/27(金) 東京 11時00分発、12/1(火) 父島 15時00分発 の予定です。ご乗船をお待ちしております。",
   "alerts": [],
   "recent_info": [
@@ -66,18 +66,26 @@
     }
   ],
   "hahajima_status": {
-    "status": "通常運航",
+    "status": "時刻変更・条件付情報あり",
     "source_url": "https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/"
   },
   "parsed_override": null,
+  "persisted_overrides": [],
+  "source_status": {
+    "ogamaru_next": "ok",
+    "ogamaru_info": "ok",
+    "hahajima_status": "ok",
+    "ogamaru_blog_feed": "ogamaru_blog_feed_http: no_entry_elements_found (root_tag={http://purl.org/atom/ns#}feed)"
+  },
   "sources": {
     "ogamaru_info": "https://www.ogasawarakaiun.co.jp/info/",
     "ogamaru_next": "https://www.ogasawarakaiun.co.jp/info/?page_id=9",
-    "ogamaru_blog_feed": "http://blog.livedoor.jp/ogasawarakaiun/atom.xml",
-    "ogamaru_blog": "http://blog.livedoor.jp/ogasawarakaiun/",
+    "ogamaru_blog_feed": "https://blog.livedoor.jp/ogasawarakaiun/atom.xml",
+    "ogamaru_blog_feed_http": "http://blog.livedoor.jp/ogasawarakaiun/atom.xml",
+    "ogamaru_blog": "https://blog.livedoor.jp/ogasawarakaiun/",
     "ogamaru_service": "https://www.ogasawarakaiun.co.jp/service/",
     "hahajima_service": "https://www.ogasawarakaiun.co.jp/service/hahajima.html",
     "hahajima_status": "https://www.islandaccess.metro.tokyo.lg.jp/traffic/hahajima/"
   },
-  "fingerprint": "e44c99200b1bc7ec2af7d3589fc1c69c67c574c9857c5ecce1fa857d24f664dd"
+  "fingerprint": "5eab952d385b1b08ee50fe8a795662469d520b34020b128c568223b9091f9ae8"
 }
