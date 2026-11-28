@@ -25,6 +25,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.request import Request, urlopen
+from urllib.parse import urljoin
 from urllib.error import URLError, HTTPError
 
 from bs4 import BeautifulSoup
@@ -67,6 +68,20 @@ def parse_ogamaru_next(html: str) -> str:
     return re.sub(r"\s+", " ", text)[:400]
 
 
+def notice_date(value):
+    if not value: return None
+    value = value.strip()
+    try:
+        d = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        return (d.astimezone(JST) if d.tzinfo else d).date().isoformat()
+    except ValueError:
+        m = re.search(r'(\d{4})[年./-](\d{1,2})[月./-](\d{1,2})', value)
+        if m:
+            try: return datetime(*map(int,m.groups())).date().isoformat()
+            except ValueError: pass
+    return None
+
+
 def parse_ogamaru_info(html: str) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html, "html.parser")
     items: List[Dict[str, Any]] = []
@@ -78,7 +93,8 @@ def parse_ogamaru_info(html: str) -> List[Dict[str, Any]]:
                 matched = [kw for kw in ALERT_KEYWORDS if kw in title]
                 items.append({
                     "title": title,
-                    "url": a.get("href", ""),
+                    "url": urljoin(SOURCES["ogamaru_info"], a.get("href", "")),
+                    "body": "", "published_date": None, "source": "official_info",
                     "is_alert": len(matched) > 0,
                     "matched_keywords": matched,
                 })
@@ -87,13 +103,16 @@ def parse_ogamaru_info(html: str) -> List[Dict[str, Any]]:
     for art in articles[:10]:
         title_el = art.select_one("h2, h3, .entry-title, a")
         title = title_el.get_text(" ", strip=True) if title_el else art.get_text(" ", strip=True)[:80]
-        link_el = art.select_one("a[href]")
-        url = link_el["href"] if link_el else SOURCES["ogamaru_info"]
+        link_el = (title_el if title_el and title_el.name == "a" else title_el.select_one("a[href]") if title_el else None) or art.select_one("a[href]")
+        url = urljoin(SOURCES["ogamaru_info"], link_el["href"]) if link_el else SOURCES["ogamaru_info"]
+        date_el = art.select_one("time, .entry-date, .post-date, .published")
+        published = notice_date(date_el.get("datetime") or date_el.get_text(" ", strip=True)) if date_el else None
         body_text = art.get_text(" ", strip=True)
         matched = [kw for kw in ALERT_KEYWORDS if kw in title or kw in body_text]
         items.append({
             "title": title,
             "url": url,
+            "body": body_text[:4000], "published_date": published, "source": "official_info",
             "is_alert": len(matched) > 0,
             "matched_keywords": matched,
         })
@@ -135,12 +154,17 @@ def parse_ogamaru_blog_atom(xml_text: str) -> Tuple[List[Dict[str, Any]], Option
         if not title:
             continue
         url = link_el.attrib.get("href", SOURCES["ogamaru_blog"]) if link_el is not None else SOURCES["ogamaru_blog"]
-        summary_text = (summary_el.text or "") if summary_el is not None else ""
+        summary_text = BeautifulSoup(" ".join(summary_el.itertext()), "html.parser").get_text(" ", strip=True) if summary_el is not None else ""
+        pub_el = find_el(entry, "atom:published", "atom:issued", "published", "issued")
+        mod_el = find_el(entry, "atom:updated", "atom:modified", "updated", "modified")
+        published = notice_date(pub_el.text) if pub_el is not None else None
+        modified = notice_date(mod_el.text) if mod_el is not None else None
         is_office_notice = "営業所" in title and "休業" in title and "出港" not in title and "入港" not in title
         matched = [] if is_office_notice else [kw for kw in ALERT_KEYWORDS if kw in title or kw in summary_text]
         items.append({
             "title": title,
-            "url": url,
+            "url": urljoin(SOURCES["ogamaru_blog"], url),
+            "body": summary_text[:4000], "published_date": published, "modified_date": modified, "source": "official_blog",
             "is_alert": len(matched) > 0,
             "matched_keywords": matched,
         })
@@ -329,10 +353,61 @@ def merge_persisted_overrides(existing, new_override, today_str):
     return sorted(by_key.values(), key=lambda x: (x["target_date"], x["type"]))
 
 
+# Only dates in a change-related clause count as candidates, never the fetch date.
+# An undated or ambiguous report is NOT classified as expired or confirmed.
+CHANGE_RE = r"欠航|運休|変更|遅延|繰り上げ|繰り下げ|未定|条件付|延発|抜港|中止|代船|臨時"
+
+def classify_notices(items, now_jst):
+    today = now_jst.date().isoformat()
+    active, unresolved, past = [], [], []
+    for item in items:
+        if not item.get("is_alert"): continue
+        item = dict(item)
+        published = item.get("published_date")
+        anchor = datetime.fromisoformat(published).replace(tzinfo=JST) if published else now_jst
+        dates = set()
+        ambiguous = False
+        for clause in re.split(r"[。！？\n]", item.get("title", "") + "。" + item.get("body", "")):
+            if not re.search(CHANGE_RE, clause): continue
+            if not re.search(r"父島|母島|東京|出港|入港|出発|到着|発便|着便|運航|便", clause): continue
+            if re.search(r"以降|当面|までの間|しばらく|期間|から.*まで|[〜～]", clause): ambiguous = True
+            for match in re.finditer(DATE_RE, clause):
+                # Month/day without a publication year is not reliable for an old report.
+                if not match.group(1) and not published:
+                    ambiguous = True
+                    continue
+                date = resolve_date(*match.groups(), anchor)
+                if date: dates.add(date)
+        item["target_dates"] = sorted(dates)
+        if dates and not ambiguous and max(dates) < today:
+            item["notice_state"] = "past_target"
+            past.append(item)
+        elif dates and not ambiguous and min(dates) >= today:
+            item["notice_state"] = "current_candidate"
+            active.append(item)
+        else:
+            item["notice_state"] = "unresolved"
+            unresolved.append(item)
+    return active, unresolved, past
+
+
+def merge_notice_history(existing, past, today):
+    cutoff = (datetime.fromisoformat(today).date() - timedelta(days=366)).isoformat()
+    result = {}
+    for item in list(existing) + list(past):
+        if not isinstance(item, dict): continue
+        dates = item.get("target_dates") or []
+        if dates and max(dates) >= cutoff:
+            result[(item.get("url"), item.get("title"))] = item
+    return sorted(result.values(), key=lambda x: max(x.get("target_dates") or [""]), reverse=True)
+
+
 def compute_fingerprint(data: Dict[str, Any]) -> str:
     comparable = {
         "next_summary": data.get("next_summary"),
         "alerts": data.get("alerts"),
+        "unresolved_notices": data.get("unresolved_notices"),
+        "notice_history": data.get("notice_history"),
         "hahajima_status": data.get("hahajima_status"),
         "parsed_override": data.get("parsed_override"),
         "persisted_overrides": data.get("persisted_overrides"),
@@ -450,10 +525,14 @@ def main() -> int:
     out_path = Path(args.output)
     prev_fingerprint: Optional[str] = None
     existing_overrides: List[Dict[str, str]] = []
+    existing_history = []
+    existing_cancellations = []
     if out_path.exists():
         try:
             prev_data = json.loads(out_path.read_text(encoding="utf-8"))
             prev_fingerprint = prev_data.get("fingerprint")
+            existing_history = prev_data.get("notice_history") or []
+            existing_cancellations = prev_data.get("cancellations") or []
             existing_overrides = (prev_data.get("persisted_overrides") or []) if prev_data.get("schema_version") == 2 else []
         except Exception:
             prev_fingerprint = None
@@ -504,14 +583,23 @@ def main() -> int:
     source_status["ogamaru_blog_feed"] = blog_debug
 
     info_items += blog_items
-    alerts = [item for item in info_items if item["is_alert"]]
+    alerts, unresolved, past = classify_notices(info_items, now_jst)
+    history = merge_notice_history(existing_history, past, now_jst.date().isoformat())
     updates = extract_schedule_updates(next_summary, now_jst) if source_status["ogamaru_next"] == "ok" else []
     parsed_override = extract_schedule_override(next_summary, now_jst) if updates else None
+    # Preserve explicitly cancelled events across source failures; only an explicit
+    # replacement sailing time clears a cancellation for that same event.
+    cancellation_map = {(c["target_date"],c["type"]): c for c in existing_cancellations if isinstance(c,dict) and c.get("target_date") and c.get("type")}
+    for u in updates: cancellation_map.pop((u["target_date"],u["type"]),None)
+    for c in (extract_cancellations(next_summary, now_jst) if source_status["ogamaru_next"] == "ok" else []): cancellation_map[(c["target_date"],c["type"])]=c
     persisted_overrides = merge_persisted_overrides(existing_overrides, updates, now_jst.strftime("%Y-%m-%d"))
 
     new_data = {
         "schema_version": 2,
-        "cancellations": extract_cancellations(next_summary, now_jst) if source_status["ogamaru_next"] == "ok" else [],
+        "cancellations": list(cancellation_map.values()),
+        "notice_schema": 1,
+        "unresolved_notices": unresolved,
+        "notice_history": history,
         "updated_at": now_jst.strftime("%Y-%m-%d %H:%M JST"),
         "updated_iso": now_jst.isoformat(),
         "next_summary": next_summary,
