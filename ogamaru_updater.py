@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-おがさわら丸・ははじま丸 公式情報自動取得 & 通知スクリプト (Ver.1.5)
+おがさわら丸・ははじま丸 公式情報自動取得 & 通知スクリプト (Ver.1.5.1)
 ----------------------------------------------------------------
-修正内容 (Ver.1.5):
-- ははじま丸の運航状況で「時刻変更・条件付情報あり」のような抽象表記ではなく、
-  うみそら便ページに記載された具体的な変更・条件内容（例:「条件付就航（海上不良のため）」や
-  「母島発 12:00に変更」など）を端的に抽出して hahajima_status.status に直接格納
+修正内容 (Ver.1.5.1):
+- 全角括弧「（）」を区切り文字から除外し、「条件付就航（海上不良のため）」のような
+  括弧付き補足文が途中で切れないよう正規表現を修正
 """
 
 import argparse
@@ -194,7 +193,7 @@ def parse_hahajima_status(html: str) -> Dict[str, str]:
     raw_text = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
     text = strip_umisora_legends(raw_text)
 
-    ship_blocks = re.findall(r"[（(]ははじま丸[）)]\s*([^【（）()]{1,120})", text)
+    ship_blocks = re.findall(r"[（(]ははじま丸[）)]\s*(.+?)(?=【|[（(][^）)]+丸[）)]|☏|TEL|受付時間|$)", text)
     if ship_blocks:
         target_text = " ".join(ship_blocks)
     else:
@@ -382,7 +381,7 @@ def run_test_mode() -> int:
     </body></html>
     """
     res2 = parse_hahajima_status(cond_haha_html)
-    assert res2["status"] == "条件付就航（海上不良のため）" and res2["is_alert"] == "true"
+    assert res2["status"] == "条件付就航（海上不良のため）" and res2["is_alert"] == "true", f"res2={res2}"
 
     broken_html = "<html><body><div>メンテナンス中です</div></body></html>"
     assert parse_hahajima_status(broken_html)["status"] == "確認不能"
